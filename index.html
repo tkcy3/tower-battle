@@ -429,6 +429,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.13.3', d:'2026-11-28', items:['✏️ なかまたちのふちの線と顔の大きさを、どのなかまも同じにそろえました']},
   {v:'0.13.2', d:'2026-11-28', items:['🔀 パーツのもとの並びを「なかまたち・いらすとや・えもじ・ウィキメディア」にしました']},
   {v:'0.13.1', d:'2026-11-28', items:['🙂 「なかまたち」を、お題ではなく「パーツのもと」（いらすとや・えもじ・ウィキメディアのならび）で選ぶようにしました。なかまたちだけなら、お題はいりません。ほかといっしょに選ぶと、お題の画像になかまたちがまざります','🫛 みどりのなかまの左右が欠けていたのを直しました']},
   {v:'0.13.0', d:'2026-11-28', items:['🙂 「なかまたち」を追加しました。れんしゅうに出てくる顔つきのなかまたち（13しゅるい）で遊べます。画像をさがさないので、すぐ始められます','🌀 パーツをまわしたとき、上下にガタガタ動かず、まん中を軸にきれいに回るようにしました','📋 更新内容の見せ方を、ほかのゲームとそろえました（いちばん新しい更新だけ開いて、前の分は日付ごとにたたみます）']},
@@ -946,7 +947,7 @@ var camTop = -400, camTarget = -400, dropT = 0, still = 0, overT = 0, loser = -1
 function shuffleBag(){ bag = POOL.map(function(_, i){ return i; }); for (var i = bag.length - 1; i > 0; i--) { var j = (Math.random() * (i+1)) | 0, t = bag[i]; bag[i] = bag[j]; bag[j] = t; } }
 function nextPi(){ if (!bag.length) shuffleBag(); return bag.pop(); }
 function bad(b){ return !isFinite(b.position.x) || !isFinite(b.position.y) || !isFinite(b.angle); }
-function randScale(pc){ return Math.sqrt(2300 * (0.7 + Math.random() * 0.65) / pc.area); }
+function randScale(pc){ if (pc.fixSc) return pc.fixSc; return Math.sqrt(2300 * (0.7 + Math.random() * 0.65) / pc.area); }
 function polyCentroid(v){
   var a = 0, cx = 0, cy = 0;
   for (var i = 0; i < v.length; i++) { var j = (i + 1) % v.length, f = v[i].x * v[j].y - v[j].x * v[i].y; a += f; cx += (v[i].x + v[j].x) * f; cy += (v[i].y + v[j].y) * f; }
@@ -1131,9 +1132,17 @@ var TUT_STEPS = [
   ['じょうず！ もう1こ 積んでみよう', 'うごかす・まわす・おとす、だよ'],
   ['たかく積むほど、とりさんや<br>おひさまが 見えてくるよ☀️', '島から落としたら おしまい。<br>どこまで積めるかな？']
 ];
+// every friend is shown at one fixed size, so the outline and the face come out the same thickness on all of them
+var FR_LINE = 3.2, FR_FACE = 0.35;   // outline width in world units; face size relative to a typical friend
 function tutPiece(kind, col){
+  var probe = tutDraw0(kind, col, 0, 0); if (!probe) return null;
+  var s = Math.sqrt(2300 / probe.area);
+  var pc = tutDraw0(kind, col, FR_LINE / s, FR_FACE / s); if (!pc) return null;
+  pc.src = 'fr'; pc.fixSc = s; return pc;
+}
+function tutDraw0(kind, col, lw, fs){
   var c = document.createElement('canvas'); c.width = c.height = 220; var x = c.getContext('2d'), i, a;
-  x.fillStyle = col; x.strokeStyle = '#3b4a54'; x.lineWidth = 10; x.lineJoin = 'round'; x.beginPath();
+  x.fillStyle = col; x.strokeStyle = '#3b4a54'; x.lineWidth = lw || 1; x.lineJoin = 'round'; x.beginPath();
   if (kind === 'box') x.rect(30, 50, 160, 120);
   else if (kind === 'wide') x.rect(15, 75, 190, 70);
   else if (kind === 'tall') x.rect(65, 15, 90, 190);
@@ -1147,14 +1156,15 @@ function tutPiece(kind, col){
   else if (kind === 'bean') { x.moveTo(78, 46); x.lineTo(142, 46); x.arc(142, 110, 64, -Math.PI / 2, Math.PI / 2); x.lineTo(78, 174); x.arc(78, 110, 64, Math.PI / 2, Math.PI * 1.5); x.closePath(); }
   else if (kind === 'ell') { x.moveTo(25, 20); x.lineTo(95, 20); x.lineTo(95, 130); x.lineTo(195, 130); x.lineTo(195, 200); x.lineTo(25, 200); x.closePath(); }
   else if (kind === 'star') { for (i = 0; i < 10; i++) { a = i / 10 * Math.PI * 2 - Math.PI / 2; var r = i % 2 ? 48 : 100; x.lineTo(110 + Math.cos(a) * r, 120 + Math.sin(a) * r); } x.closePath(); }
-  x.fill(); x.stroke();
+  x.fill(); if (lw) x.stroke();
+  if (!fs) return makePiece(c, {force:true});
   var fy = {tri:140, arch:135, ell:165, star:125, penta:122}[kind] || 110, fx = kind === 'ell' ? 110 + 20 : 110;
-  if (kind === 'ell') { x.save(); x.translate(fx - 110, 0); }
-  x.fillStyle = '#3b4a54'; x.beginPath(); x.arc(92, fy - 6, 7, 0, 7); x.arc(128, fy - 6, 7, 0, 7); x.fill();
-  x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(100, fy + 8); x.quadraticCurveTo(110, fy + 16, 120, fy + 8); x.stroke();
-  if (kind === 'ell') x.restore();
-  x.fillStyle = 'rgba(255,127,138,.45)'; x.beginPath(); x.ellipse(fx - 34, fy + 6, 10, 6, 0, 0, 7); x.ellipse(fx + 34, fy + 6, 10, 6, 0, 0, 7); x.fill();
-  var pc = makePiece(c, {force:true}); if (pc) pc.src = 'fr'; return pc;
+  x.save(); x.translate(fx, fy); x.scale(fs, fs);
+  x.fillStyle = '#3b4a54'; x.beginPath(); x.arc(-18, -6, 7, 0, 7); x.arc(18, -6, 7, 0, 7); x.fill();
+  x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(-10, 8); x.quadraticCurveTo(0, 16, 10, 8); x.stroke();
+  x.fillStyle = 'rgba(255,127,138,.45)'; x.beginPath(); x.ellipse(-34, 6, 10, 6, 0, 0, 7); x.ellipse(34, 6, 10, 6, 0, 0, 7); x.fill();
+  x.restore();
+  return makePiece(c, {force:true});
 }
 // 「なかまたち」: the practice friends, as a topic everyone can pick (no image search needed)
 var FRIEND_SET = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['ball', '#ffd34d'], ['tall', '#b79cf0'], ['penta', '#6ec7a8'], ['egg', '#ffc4a8'], ['dia', '#8fd0ef'], ['arch', '#f2a65a'], ['bean', '#a8d86e'], ['ell', '#f7a1c4'], ['star', '#ffe27a']];
@@ -1392,7 +1402,7 @@ $('lobGo').onclick = function(){
   startNetMatch();
 };
 $('lobBack').onclick = function(){ job++; leave(); };
-function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null}; }
+function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null, fixSc:pc.fixSc || null, src:pc.src || null}; }
 function sendPieces(){
   NET.ready = false;
   send({t:'pstart', n:POOL.length, topic:TOPIC});
@@ -1430,7 +1440,7 @@ function buildPieces(list){
   return Promise.all(list.map(function(d){
     return loadImg(d.url || d.u, false).then(function(im){
       var c = document.createElement('canvas'); c.width = d.w; c.height = d.h; c.getContext('2d').drawImage(im, 0, 0, d.w, d.h);
-      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit, url:d.url || null};
+      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit, url:d.url || null, fixSc:d.fixSc || null, src:d.src || null};
     });
   }));
 }
