@@ -86,15 +86,15 @@ input.tx:focus{border-color:var(--p1)}
 .bub small{font-size:11px;color:var(--muted);margin-left:5px}
 @keyframes fl{0%{transform:translateY(16px) scale(.6);opacity:0}12%{transform:translateY(0) scale(1.08);opacity:1}20%{transform:scale(1)}80%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
 body:not(.play) #side,body:not(.play) #ctrl,body:not(.play) #waitTx,body:not(.play) #quit{display:none}
-body:not(.net) #side,body:not(.net) #chatLog,body:not(.net) #roomTag{display:none}
+body:not(.social) #side,body:not(.social) #chatLog,body:not(.net) #roomTag{display:none}
 body:not(.play):not(.result) #hud,body:not(.play):not(.result):not(.talk) #chatLog,body:not(.play):not(.result):not(.talk) #roomTag{display:none}
 #rxBar,#chatBar{display:none}
 body.play.rxOpen #rxBar{display:flex}
 body.play.rxOpen #chatLog{bottom:calc(env(safe-area-inset-bottom) + 146px)}
 body.play.chatOpen #chatBar{display:flex}
 body.play.chatOpen #ctrl,body.play.chatOpen #waitTx{display:none}
-body.result.net #rxBar{display:flex;bottom:calc(env(safe-area-inset-bottom) + 64px)}
-body.result.net #chatBar{display:flex}
+body.result.social #rxBar{display:flex;bottom:calc(env(safe-area-inset-bottom) + 64px)}
+body.result.social #chatBar{display:flex}
 body.result #chatLog{bottom:calc(env(safe-area-inset-bottom) + 112px);color:#fff;text-shadow:0 0 3px #3b4a54,0 0 3px #3b4a54,0 0 3px #3b4a54}
 /* result */
 #res{background:rgba(59,74,84,.45);justify-content:center;z-index:10}
@@ -106,11 +106,11 @@ body.result #chatLog{bottom:calc(env(safe-area-inset-bottom) + 112px);color:#fff
 .seg3 button.on{background:var(--p0);color:#fff;border-color:var(--p0d)}
 .lenNote{font-size:13px;color:var(--muted);margin-top:8px}
 .mstat{font-size:14px;color:var(--muted)}
-body.talk.net #rxBar{display:flex;bottom:calc(env(safe-area-inset-bottom) + 64px)}
-body.talk.net #chatBar{display:flex}
-body.talk.net #chatLog{display:block;bottom:calc(env(safe-area-inset-bottom) + 112px)}
-body.talk.net .layer{padding-bottom:calc(env(safe-area-inset-bottom) + 150px)}
-body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 74px)}
+body.talk.social #rxBar{display:flex;bottom:calc(env(safe-area-inset-bottom) + 64px)}
+body.talk.social #chatBar{display:flex}
+body.talk.social #chatLog{display:block;bottom:calc(env(safe-area-inset-bottom) + 112px)}
+body.talk.social .layer{padding-bottom:calc(env(safe-area-inset-bottom) + 150px)}
+body.social #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 74px)}
 #res .card{align-items:center;text-align:center;gap:10px}
 #resBig{font-size:27px;font-weight:900;line-height:1.2}
 #resSub{font-size:16px;color:var(--muted)}
@@ -302,6 +302,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.8.0', d:'2026-11-28', items:['💬 CPU対戦でもリアクションとチャットができるようになりました','🤖 CPUも、うまく積めたとき・ゆれたとき・落ちたときなどに、リアクションやチャットをします。話しかけると返事もします']},
   {v:'0.7.1', d:'2026-11-28', items:['📐 「ひとり・CPU・ネット対戦」のボタンを、絵と文字の2段にして見やすくしました','✏️ ネット対戦の名前の欄に「あなたの名前」と出るようにしました','🖼️ 画像のさがし先は、前に選んだ組み合わせをそのまま覚えています']},
   {v:'0.7.0', d:'2026-11-28', items:['🏆 CPU対戦とネット対戦は「1勝・3勝・5勝先取」から選べるようになりました','🪙 先手はランダムで決まり、お題は先手から1ゲームごとに交代できめます','💬 ネット対戦では、お題をえらんでいるあいだもチャットとリアクションができます']},
   {v:'0.6.0', d:'2026-11-28', items:['🤖 CPUと対戦できるようになりました（あそびかたは「ひとり」「CPU」「ネット対戦」の3つに）','🎵 ほのぼのしたBGMと効果音をつけました。設定で音の大きさや振動を変えられます','⚙ 設定と、この更新内容の画面をつけました']},
@@ -336,11 +337,11 @@ function show(id){
   document.body.classList.toggle('play', id === null);
   document.body.classList.toggle('result', id === 'res');
   // between games of a net match you can still chat and react
-  document.body.classList.toggle('talk', ['pick','waitL','toss','load','lobby'].indexOf(id) >= 0 && !!NET && !!NET.open);
+  document.body.classList.toggle('talk', ['pick','waitL','toss','load','lobby'].indexOf(id) >= 0 && ((!!NET && !!NET.open) || (MODE === 'cpu' && !!MATCH)));
   if (id !== null) document.body.classList.remove('rxOpen', 'chatOpen');
   if (id !== 'pick' && $('topicBlock').parentNode !== $('topicHome')) $('topicHome').appendChild($('topicBlock'));
 }
-function setNetClass(){ document.body.classList.toggle('net', MODE === 'net'); }
+function setNetClass(){ document.body.classList.toggle('net', MODE === 'net'); document.body.classList.toggle('social', MODE === 'net' || MODE === 'cpu'); }
 
 /* ---------- home ---------- */
 var CHIPS = [['くるま','自動車'],['どうぶつ','動物'],['くだもの','果物'],['恐竜','恐竜'],['楽器','楽器'],['いす','椅子'],['とり','鳥'],['おかし','菓子']];
@@ -883,7 +884,8 @@ function newTurn(){
   computeTop();
   var pi = nextPi(), sc = randScale(POOL[pi]);
   beginAim(pi, sc);
-  if (count > 0) { sfx('next'); if (NET) send({t:'fx', k:'next'}); }
+  if (count > 0) { sfx('next'); if (NET) send({t:'fx', k:'next'}); if (MODE === 'cpu') cpuTalk(turnP === 1 ? 'youOk' : 'meOk'); }
+  WOBBLE_SAID = false;
   if (NET) send({t:'turn', pi:pi, sc:sc, tp:turnP, n:count, top:topY});
   if (MODE === 'cpu' && turnP === 1) cpuStart();
 }
@@ -946,7 +948,7 @@ function gameOver(who){
   state = 'over'; loser = who; overT = 0; cur = null; CPU = null;
   sfx('splash'); vib([40, 40, 80]); if (NET) send({t:'fx', k:'splash'});
   if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
-  else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); }
+  else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); cpuTalk(who === 0 ? 'youFell' : 'iFell'); }
   else { MATCH.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:MATCH.wins}); }
   updHud();
 }
@@ -994,17 +996,18 @@ function tchips(w){ return '<div class="tchips"><span style="background:#fdeee8;
 function showResult(){
   renderResult(); show('res');
   if (MODE === 'solo') sfx(NEWBEST ? 'best' : 'end');
+  if (MODE === 'cpu' && matchOver()) cpuTalk(MATCH.wins[1] >= MATCH.len ? 'iWon' : 'youWon');
   else { var meLost = MODE === 'net' ? loser === NET.me : loser === 0; sfx(meLost ? 'lose' : 'win'); if (!meLost) vib([20, 60, 20]); }
 }
 
 /* ---------- reactions + chat ---------- */
 var RX = ['すごい！','(笑)','www','(ﾟДﾟ)','ドンマイ','おしい！','ナイス！','よろしく'];
 $('rxBar').innerHTML = RX.map(function(r, i){ return '<button data-k="' + i + '">' + r + '</button>'; }).join('');
-$('rxBar').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || !NET) return; var k = +b.dataset.k; send({t:'rx', k:k}); bubble(NET.me, k); sfx('pop'); if (document.body.classList.contains('play')) document.body.classList.remove('rxOpen'); });
+$('rxBar').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || !(NET || MODE === 'cpu')) return; var k = +b.dataset.k; send({t:'rx', k:k}); bubble(myIdx(), k); sfx('pop'); if (MODE === 'cpu') cpuHearRx(k); if (document.body.classList.contains('play')) document.body.classList.remove('rxOpen'); });
 $('rxBtn').onclick = function(){ document.body.classList.toggle('rxOpen'); document.body.classList.remove('chatOpen'); };
 $('chatBtn').onclick = function(){ document.body.classList.toggle('chatOpen'); document.body.classList.remove('rxOpen'); if (document.body.classList.contains('chatOpen')) $('chatIn').focus(); };
 $('chatClose').onclick = function(){ document.body.classList.remove('chatOpen'); $('chatIn').blur(); };
-function sendChat(){ var s = ($('chatIn').value || '').trim().slice(0, 40); if (!s || !NET) return; $('chatIn').value = ''; send({t:'chat', s:s}); chatLine(NET.me, s); if (document.body.classList.contains('play')) { document.body.classList.remove('chatOpen'); $('chatIn').blur(); } }
+function sendChat(){ var s = ($('chatIn').value || '').trim().slice(0, 40); if (!s || !(NET || MODE === 'cpu')) return; $('chatIn').value = ''; send({t:'chat', s:s}); chatLine(myIdx(), s); if (MODE === 'cpu') cpuHearChat(s); if (document.body.classList.contains('play')) { document.body.classList.remove('chatOpen'); $('chatIn').blur(); } }
 $('chatSend').onclick = sendChat;
 $('chatIn').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); sendChat(); } });
 function chatLine(p, s){
@@ -1016,7 +1019,7 @@ function chatLine(p, s){
 }
 var bubN = 0;
 function bubble(p, k){
-  var mine = NET && p === NET.me, e = document.createElement('div');
+  var mine = p === myIdx(), e = document.createElement('div');
   e.className = 'bub'; e.textContent = RX[k] || '';
   var sm = document.createElement('small'); sm.textContent = pname(p); e.appendChild(sm);
   e.style.borderColor = p ? 'var(--p1)' : 'var(--p0)'; e.style.color = p ? 'var(--p1d)' : 'var(--p0d)';
@@ -1183,8 +1186,9 @@ function checkWant(){
 /* ---------- matches (CPU and net): first to N wins, random first player, the topic picker alternates ---------- */
 function chooser(){ return (MATCH.first + MATCH.game) % 2; }
 function startCpuMatch(){
-  NET = null; setNetClass();
+  NET = null; setNetClass(); $('chatLog').innerHTML = '';
   MATCH = {len:S.matchLen, first:Math.random() < 0.5 ? 0 : 1, game:0, wins:[0, 0]};
+  cpuTalk('hello');
   toss(nextGame);
 }
 function startNetMatch(){
@@ -1210,12 +1214,13 @@ function nextGame(){
   state = 'idle'; NEWBEST = false;
   var c = chooser(), label = (MATCH.game + 1) + 'ゲームめ ・ ';
   if (MODE === 'cpu') {
-    if (c === 0) { var mePick = function(topic){ runSearch(topic, {mine:true, label:'', done:function(){ newRound(0); }, back:function(){ openPick(label, mePick); }}); }; openPick(label, mePick); }
+    if (c === 0) { cpuTalk('waitPick'); var mePick = function(topic){ runSearch(topic, {mine:true, label:'', done:function(){ newRound(0); }, back:function(){ openPick(label, mePick); }}); }; openPick(label, mePick); }
     else {
       MATCH.used = MATCH.used || [];
       var left = CPU_TOPICS.filter(function(t){ return MATCH.used.indexOf(t) < 0; }); if (!left.length) { MATCH.used = []; left = CPU_TOPICS; }
       var t = left[Math.floor(Math.random() * left.length)]; MATCH.used.push(t);
       runSearch(t, {mine:false, label:'CPUのお題は ', done:function(){ newRound(1); }});
+      cpuTalk('picked', t);
     }
     return;
   }
@@ -1276,6 +1281,7 @@ function step(now){
         dropT += dt;
         var calm = placed.every(function(b){ var bd = b.body; return !bd || !bd.isAwake() || (bd.getLinearVelocity().length() * PS < 6 && Math.abs(bd.getAngularVelocity()) < 0.25); });
         still = calm ? still + 1 : 0;
+        if (MODE === 'cpu' && !WOBBLE_SAID && dropT > 1.4 && still === 0) { WOBBLE_SAID = true; cpuTalk('wobble'); }
         if (dropT > 0.5 && (still > 24 || dropT > 7)) { count++; if (MODE !== 'solo') turnP = 1 - turnP; newTurn(); }
       }
       sendSnap();
@@ -1449,6 +1455,57 @@ function onContact(c){
     var v = Math.min(1, bd.getLinearVelocity().length() * PS / 300);
     sfx('land', v); vib(8); if (NET) send({t:'fx', k:'land', v:v});
   });
+}
+
+/* ---------- CPU's little personality: reactions and chat ---------- */
+var WOBBLE_SAID = false, CPUSAY = {last:0};
+function myIdx(){ return NET ? NET.me : 0; }
+function pickOne(a){ return a[Math.floor(Math.random() * a.length)]; }
+// k: reaction index (RX), s: chat line. Speaks a moment later, and not too often.
+function cpuDo(k, s, delay, force){
+  setTimeout(function(){
+    if (MODE !== 'cpu' || !MATCH) return;
+    var now = Date.now(); if (!force && now - CPUSAY.last < 2200) return; CPUSAY.last = now;
+    if (k != null) { bubble(1, k); sfx('pop'); }
+    if (s) setTimeout(function(){ if (MODE === 'cpu' && MATCH) { chatLine(1, s); sfx('blip'); } }, k != null ? 450 : 0);
+  }, delay == null ? 600 + Math.random() * 900 : delay);
+}
+// RX: 0 すごい！ 1 (笑) 2 www 3 (ﾟДﾟ) 4 ドンマイ 5 おしい！ 6 ナイス！ 7 よろしく
+function cpuTalk(ev, x){
+  if (MODE !== 'cpu' || !MATCH) return;
+  var r = Math.random(), tall = count >= 6;
+  switch (ev) {
+    case 'hello': cpuDo(7, pickOne(['よろしくね！', 'まけないよ〜', 'たのしもうね！']), 2200, true); break;
+    case 'picked': if (r < 0.7) cpuDo(null, pickOne(['「' + x + '」にしてみたよ！', '「' + x + '」でいこう！', 'こんどは「' + x + '」だよ〜']), 300, true); break;
+    case 'waitPick': setTimeout(function(){ if (!$('pick').classList.contains('hidden') && Math.random() < 0.6) cpuDo(null, pickOne(['なににする〜？', 'どんなお題かな？', 'わくわく']), 0); }, 7000); break;
+    case 'youOk': if (r < (tall ? 0.55 : 0.3)) cpuDo(pickOne([6, 0, 6]), r < 0.12 ? pickOne(['うまい！', 'やるね〜', 'そこに置くんだ！']) : null); break;
+    case 'meOk': if (r < 0.28) cpuDo(r < 0.1 ? 0 : null, pickOne(['ふぅ〜、セーフ', 'よしっ', 'どうだ〜！', 'えへへ'])); break;
+    case 'wobble': if (r < 0.45) cpuDo(3, r < 0.2 ? pickOne(['ゆれてる〜！', 'あぶなっ', 'ドキドキ…']) : null, 200); break;
+    case 'youFell': cpuDo(pickOne([1, 4, 2]), pickOne(['あ〜っ！', 'おしかったね', 'ドンマイ！', 'やった〜']), 900, true); break;
+    case 'iFell': cpuDo(5, pickOne(['くやし〜！', 'あちゃ〜', 'つぎは負けないよ！']), 900, true); break;
+    case 'iWon': cpuDo(null, pickOne(['やった〜！ ありがとう！', 'いい勝負だったね！ またやろう']), 2600, true); break;
+    case 'youWon': cpuDo(0, pickOne(['まけちゃった〜。つよいね！', 'おめでとう！ またあそぼうね']), 2600, true); break;
+  }
+}
+// answering the player's reactions
+function cpuHearRx(k){
+  if (Math.random() > 0.65) return;
+  var back = {0:[null, 'えへへ'], 1:[1, null], 2:[2, null], 3:[3, null], 4:[null, 'ありがと〜'], 5:[null, 'でしょ〜'], 6:[null, 'ありがと！'], 7:[7, 'よろしくね！']}[k] || [6, null];
+  cpuDo(back[0], back[1], 700 + Math.random() * 700, true);
+}
+// answering chat: a few simple patterns, otherwise a friendly word
+function cpuHearChat(t){
+  var a;
+  if (/よろしく/.test(t)) a = 'よろしくね！';
+  else if (/あと\s*\d+|あと[一二三四五]|もう一回|もういっかい|もう1回/.test(t)) a = pickOne(['いいよ！', 'うん、やろう！', 'のぞむところだよ']);
+  else if (/すご|うま|じょうず|上手|つよ|強/.test(t)) a = pickOne(['えへへ', 'ありがと！', 'てれるな〜']);
+  else if (/ありがと/.test(t)) a = 'どういたしまして！';
+  else if (/ごめん|すまん/.test(t)) a = 'だいじょうぶ！';
+  else if (/おやすみ|ねる|寝/.test(t)) a = 'おやすみ〜';
+  else if (/[?？]$/.test(t)) a = pickOne(['うーん、どうだろう？', 'ひみつ！', 'たぶんね！']);
+  else if (/笑|w$|ｗ/.test(t)) a = pickOne(['www', '(笑)']);
+  else a = pickOne(['ふむふむ', 'がんばろ〜', 'いい勝負だね！', 'なるほど〜', 'うんうん']);
+  cpuDo(null, a, 900 + Math.random() * 1000, true);
 }
 
 /* ---------- CPU ---------- */
