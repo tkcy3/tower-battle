@@ -192,7 +192,7 @@ body:not(.play) #gSet{display:none}
     <div id="lenBox" class="hidden"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lenSeg"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div><div class="lenNote">先手はランダム。お題は先手から交代できめるよ</div></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
       <label for="myName" class="lenlbl" style="margin:0">あなたの名前<span style="font-weight:500">（相手の画面に出るよ）</span></label>
-      <input id="myName" class="tx" type="text" maxlength="8" placeholder="れい：たかし" autocomplete="off" style="font-size:17px;padding:10px 12px">
+      <input id="myName" class="tx" type="text" maxlength="8" placeholder="例）たかし" autocomplete="off" style="font-size:17px;padding:10px 12px">
       <div class="netrow"><button id="mkRoom"><i>🏠</i>部屋をつくる</button><button id="joinBtn"><i>🚪</i>部屋に入る</button></div>
       <div id="joinBox" class="hidden" style="display:flex;gap:8px"><input id="joinNo" class="tx" type="tel" inputmode="numeric" maxlength="4" placeholder="ばんごう4けた" autocomplete="off"><button id="joinGo" style="width:84px;font-size:17px">入る</button></div>
     </div>
@@ -308,6 +308,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.9.2', d:'2026-11-28', items:['✏️ 名前の入力らんの見本を「例）たかし」にしました']},
   {v:'0.9.1', d:'2026-11-28', items:['📐 ホーム画面を作りなおしました。「ひとり・CPU・ネット対戦」を切りかえても、ボタンの位置が動きません','🖼️ 画像のさがし先の並びを「いらすとや・えもじ・ウィキメディア」にしました','📷 「写真でつくる」はなくしました']},
   {v:'0.9.0', d:'2026-11-28', items:['🎉 勝ったときに、紙ふぶきと「かち！」が出るようになりました。星がたまっていくと、優勝まであといくつか分かります','🏆 優勝したときは、トロフィーと花火とファンファーレでお祝い！ 花火は結果の画面のうしろでもしばらく続きます','🥈 負けても「じゅんゆうしょう！」のメダルがもらえます。ひとりで遊ぶときも、さいこう記録をお祝いします']},
   {v:'0.8.0', d:'2026-11-28', items:['💬 CPU対戦でもリアクションとチャットができるようになりました','🤖 CPUも、うまく積めたとき・ゆれたとき・落ちたときなどに、リアクションやチャットをします。話しかけると返事もします']},
