@@ -155,6 +155,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <div id="load" class="layer hidden">
   <div class="ltx" id="loadTx">さがしてるよ</div>
   <div class="lnum" id="loadN">0</div>
+  <div id="loadDiag" style="font-size:13px;color:var(--muted);text-align:center;min-height:1em"></div>
   <div class="thumbs" id="thumbs"></div>
   <button class="big hidden" id="loadGo" style="max-width:280px">これであそぶ</button>
   <button class="sub hidden" id="loadRe" style="max-width:280px">🔄 さがしなおす</button>
@@ -220,7 +221,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <script>
 (function(){
 'use strict';
-var VERSION = '0.4.0';
+var VERSION = '0.4.1';
 var $ = function(id){ return document.getElementById(id); };
 var PL = planck, PS = 30;  // physics: planck.js (Box2D), 30 units = 1 m
 $('ver').textContent = 'v' + VERSION;
@@ -467,7 +468,16 @@ function iraSearch(q){
     }).filter(function(o){ return o && !IRA_BAD.test(o.title); });
   }).catch(function(){ return []; });
 }
+var IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0};
+function iraDiag(){ var d = $('loadDiag'); if (!d) return; var t = IRA_STAT; d.textContent = 'いらすとや：記事 ' + t.posts + '件 ・ 画像OK ' + (t.direct + t.proxy) + (t.proxy ? '（中継 ' + t.proxy + '）' : '') + ' ・ 読めない ' + t.fail + (t.shape ? ' ・ 形にできない ' + t.shape : ''); }
+function readable(im){ try { var c = document.createElement('canvas'); c.width = c.height = 1; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 1, 1); x.getImageData(0, 0, 1, 1); return true; } catch(e) { return false; } }
+// try the image directly; if the server does not allow reading its pixels, go through an image relay that does
+function loadIra(url){
+  var viaProxy = function(){ var pu = 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&output=png'; return loadImg(pu, true).then(function(im){ if (!readable(im)) throw 'tainted'; return {im:im, url:pu, via:'proxy'}; }); };
+  return loadImg(url, true).then(function(im){ if (!readable(im)) throw 'tainted'; return {im:im, url:url, via:'direct'}; }).catch(viaProxy);
+}
 function searchIra(topic, cb, my, used){
+  IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0}; iraDiag();
   var base = topicQuery(topic), qs = [];
   [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && qs.indexOf(q) < 0) qs.push(q); });
   var seen = {}, fresh = [], old = [], qi = 0, busy = 0, done = false, tainted = 0, tried = 0;
@@ -480,17 +490,17 @@ function searchIra(topic, cb, my, used){
     while (busy < 4 && (o = next())) {
       busy++;
       (function(o){
-        loadImg(o.thumb, true).then(function(im){
+        loadIra(o.thumb).then(function(r){
           if (my !== job || POOL.length >= TARGET) return;
-          tried++;
-          var pc = makePiece(im, {});
-          if (pc === null) { try { var t = document.createElement('canvas').getContext('2d'); t.drawImage(im, 0, 0); t.getImageData(0, 0, 1, 1); } catch(e) { tainted++; } }
-          if (pc) { pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = o.thumb; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc); }
-        }).catch(function(){ tried++; tainted++; }).then(function(){ busy--; pump(); });
+          tried++; IRA_STAT[r.via]++;
+          var pc = makePiece(r.im, {});
+          if (!pc) IRA_STAT.shape++;
+          if (pc) { pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc); }
+        }).catch(function(){ tried++; tainted++; IRA_STAT.fail++; }).then(function(){ busy--; iraDiag(); pump(); });
       })(o);
     }
     if (busy === 0 && !fresh.length) {
-      if (qi < qs.length) { iraSearch(qs[qi++]).then(function(list){ list.forEach(function(o){ if (!seen[o.thumb]) { seen[o.thumb] = 1; (used[o.thumb] ? old : fresh).push(o); } }); pump(); }); }
+      if (qi < qs.length) { iraSearch(qs[qi++]).then(function(list){ list.forEach(function(o){ if (!seen[o.thumb]) { seen[o.thumb] = 1; IRA_STAT.posts++; (used[o.thumb] ? old : fresh).push(o); } }); iraDiag(); pump(); }); }
       else if (!old.length) finish();
     }
   }
@@ -548,7 +558,7 @@ function startLocal(){
   if (MODE === 'net') return;
   var topic = getTopic();
   NET = null; setNetClass();
-  $('thumbs').innerHTML = ''; $('loadN').textContent = '0'; $('loadTx').textContent = '「' + topic + '」をさがしてるよ';
+  $('thumbs').innerHTML = ''; $('loadN').textContent = '0'; $('loadDiag').textContent = ''; $('loadTx').textContent = '「' + topic + '」をさがしてるよ';
   $('loadGo').classList.add('hidden'); $('loadRe').classList.add('hidden');
   show('load');
   searchPieces(topic, {
