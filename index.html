@@ -39,7 +39,7 @@ input.tx:focus{border-color:var(--p1)}
 .src button{font-size:14px;padding:6px 12px;border-radius:999px;border-width:2px}
 .src button.on{background:#e9f1fc;border-color:var(--p1);color:var(--p1d)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.seg button{font-size:16px;padding:11px 0}
+.seg button{font-size:15px;padding:11px 0;white-space:nowrap;letter-spacing:-.3px}
 .seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .netrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .netrow button{font-size:17px;padding:13px 0}
@@ -112,6 +112,27 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 #cred .card{max-height:80vh}
 #credList{overflow-y:auto;font-size:13px;font-weight:500;line-height:1.5;display:flex;flex-direction:column;gap:8px}
 #credList a{color:var(--p1d);word-break:break-all}
+/* settings + changelog sheets (same layout as the other games) */
+.topBtn{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;width:46px;height:46px;padding:0;font-size:22px}
+#gSet{position:fixed;top:calc(env(safe-area-inset-top) + 64px);left:10px;width:46px;height:46px;font-size:20px;padding:0;z-index:6}
+body:not(.play) #gSet{display:none}
+.ov{position:fixed;inset:0;background:rgba(59,74,84,.5);display:flex;align-items:flex-end;justify-content:center;z-index:45}
+.sheet{width:100%;max-width:480px;max-height:88vh;overflow-y:auto;background:var(--panel);border-radius:26px 26px 0 0;padding:18px 18px calc(env(safe-area-inset-bottom) + 16px);display:flex;flex-direction:column;gap:6px}
+.sheet h2{margin:0 0 6px;text-align:center;font-size:21px;font-weight:900}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 2px;border-bottom:2px solid #eef2f4;font-size:16px}
+.srow small{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.sg{display:flex;border:2.5px solid var(--line);border-radius:14px;overflow:hidden;flex:none}
+.sg button{border:0;border-radius:0;padding:8px 12px;font-size:15px;background:#fff}
+.sg button+button{border-left:2px solid var(--line)}
+.sg button.on{background:var(--ink);color:#fff}
+.rowBtn{display:flex;justify-content:space-between;align-items:center;border:0;border-bottom:2px solid #eef2f4;border-radius:0;background:none;padding:14px 2px;font-size:16px;text-align:left}
+.rowBtn .rs{color:var(--muted);font-size:14px}
+.newb{margin-left:8px;font-size:11px;background:var(--p0);color:#fff;border-radius:999px;padding:2px 8px;vertical-align:2px}
+.dbtn{font-size:14px;padding:7px 14px;border-color:#efb3a6;color:#b9543a;border-radius:12px}
+.chg{display:flex;flex-direction:column;gap:12px;font-size:14px;font-weight:500;line-height:1.55}
+.chg b{display:block;font-size:15px;font-weight:900;margin-bottom:2px}
+.chg ul{margin:0;padding-left:1.2em}
+#ver.new{color:var(--p0d);text-decoration:none;font-weight:900}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 96px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-size:15px;max-width:90vw;text-align:center;transition:opacity .4s;pointer-events:none;z-index:50}
 </style>
 </head>
@@ -120,6 +141,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 
 <div id="hud"><div id="turn">あかの番</div><div id="tally"></div></div>
 <button id="quit" aria-label="やめる">✕</button>
+<button id="gSet" aria-label="設定">⚙</button>
 <div id="roomTag"><i></i><span id="roomTagNo">部屋</span></div>
 <div id="ctrl">
   <button id="rot" aria-label="まわす">⟳</button>
@@ -134,12 +156,13 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 
 <div id="home" class="layer">
   <a class="portal hidden" id="portal" href="/">‹ 一覧</a>
+  <button class="topBtn" id="setBtn" aria-label="設定">⚙</button>
   <h1>たわーばとる<small>なんでも積みあげ</small></h1>
   <div class="card">
     <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
     <div class="chips" id="chips"></div>
     <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
-    <div class="seg" id="mode"><button data-m="solo">ひとりで</button><button data-m="local">ふたりで</button><button data-m="net">ネットで</button></div>
+    <div class="seg" id="mode"><button data-m="solo">👤 ひとり</button><button data-m="cpu">🤖 CPU</button><button data-m="net">🌐 ネット対戦</button></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
       <input id="myName" class="tx" type="text" maxlength="8" placeholder="なまえ" autocomplete="off" style="font-size:17px;padding:10px 12px">
       <div class="netrow"><button id="mkRoom">🏠 部屋をつくる</button><button id="joinBtn">🚪 部屋に入る</button></div>
@@ -149,7 +172,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
   <button class="big" id="start">はじめる</button>
   <button class="sub" id="photoBtn">📷 写真でつくる</button>
   <input id="photo" type="file" accept="image/*" multiple class="hidden">
-  <div class="foot"><span id="ver"></span><button class="link hidden" id="credBtn">画像のクレジット</button></div>
+  <div class="foot"><button class="link" id="ver"></button><button class="link hidden" id="credBtn">画像のクレジット</button></div>
 </div>
 
 <div id="load" class="layer hidden">
@@ -182,6 +205,20 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
     <button class="sub" id="credClose">とじる</button>
   </div>
 </div>
+<div class="ov hidden" id="setOv"><div class="sheet">
+  <h2>⚙ 設定</h2>
+  <div class="srow"><span>BGM</span><div class="sg" id="sB"><button data-v="0">OFF</button><button data-v="1">小</button><button data-v="2">中</button><button data-v="3">大</button></div></div>
+  <div class="srow"><span>効果音</span><div class="sg" id="sS"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
+  <div class="srow"><span>振動</span><div class="sg" id="sV"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
+  <button class="rowBtn" id="sU"><span>📋 更新内容<span class="newb hidden" id="sNew">NEW</span></span><span class="rs">v<span id="sVer"></span> ›</span></button>
+  <div class="srow" style="border:0"><span>記録のリセット<small>ひとりのさいこう記録と、勝ち数</small></span><button class="dbtn" id="sX">リセット</button></div>
+  <button class="sub" id="sC">閉じる</button>
+</div></div>
+<div class="ov hidden" id="chgOv"><div class="sheet">
+  <h2>📋 更新内容</h2>
+  <div class="chg" id="chgBody"></div>
+  <button class="sub" id="chgC">戻る</button>
+</div></div>
 <div id="toast" style="opacity:0"></div>
 
 <script>(function(global,factory){typeof exports==="object"&&typeof module!=="undefined"?factory(exports):typeof define==="function"&&define.amd?define(["exports"],factory):(global=typeof globalThis!=="undefined"?globalThis:global||self,factory(global.planck={}))})(this,function(exports2){"use strict";
@@ -221,10 +258,18 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <script>
 (function(){
 'use strict';
-var VERSION = '0.5.0';
+var CHANGELOG = [
+  {v:'0.6.0', d:'2026-11-28', items:['🤖 CPUと対戦できるようになりました（あそびかたは「ひとり」「CPU」「ネット対戦」の3つに）','🎵 ほのぼのしたBGMと効果音をつけました。設定で音の大きさや振動を変えられます','⚙ 設定と、この更新内容の画面をつけました']},
+  {v:'0.5.0', d:'2026-11-28', items:['😊 画像の探し先に「えもじ」を追加。ウィキメディア・いらすとや・えもじを組み合わせて探せます','🏝️ 島を広く、低くしました','🧱 落ちてくるパーツを少し小さくしました']},
+  {v:'0.4.0', d:'2026-11-28', items:['🖼️ いらすとやの絵からもパーツを作れるようになりました']},
+  {v:'0.3.0', d:'2026-11-28', items:['🪨 いびつな形でも、置いたあとに暴れにくくなりました']},
+  {v:'0.2.0', d:'2026-11-27', items:['🌐 ネット対戦（部屋ばんごうで対戦）、リアクション、チャット、再戦','🌤️ ほのぼのした見た目と、ひらがな多めのことばにしました']},
+  {v:'0.1.0', d:'2026-11-27', items:['🧱 お題から画像を集めて、パーツにして積みあげるゲームができました']}
+];
+var VERSION = CHANGELOG[0].v;
 var $ = function(id){ return document.getElementById(id); };
 var PL = planck, PS = 30;  // physics: planck.js (Box2D), 30 units = 1 m
-$('ver').textContent = 'v' + VERSION;
+
 if (location.hostname === 'tkcy3.github.io') $('portal').classList.remove('hidden');
 var FONT = '"Zen Maru Gothic","Hiragino Maru Gothic ProN",sans-serif';
 var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
@@ -233,7 +278,9 @@ var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, fun
 var KEY = 'tower-battle-v1', S = null;
 try { S = JSON.parse(localStorage.getItem(KEY)); } catch(e) {}
 if (!S || typeof S !== 'object') S = {};
-S.best = S.best || {}; if (['solo','local','net'].indexOf(S.mode) < 0) S.mode = 'local';
+S.best = S.best || {}; if (S.mode === 'local') S.mode = 'cpu'; if (['solo','cpu','net'].indexOf(S.mode) < 0) S.mode = 'cpu';
+S.set = S.set || {bgm:2, se:1, vib:1}; var SET = S.set;
+S.wins = S.wins || [0, 0];
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(S)); } catch(e) {} }
 var toastT = 0;
 function toast(t){ var e = $('toast'); e.textContent = t; e.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(function(){ e.style.opacity = 0; }, 2600); }
@@ -735,22 +782,23 @@ function addPhysics(b){
   var sc = b.plugin.sc, c = b.plugin.c, n = 0;
   convexParts(b.plugin.pc).forEach(function(p){ if (fixtureFrom(body, p.map(function(r){ return [(r[0] * sc - c.x) / PS, (r[1] * sc - c.y) / PS]; }))) n++; });
   if (!n) fixtureFrom(body, b.outline.map(function(r){ return [r.x / PS, r.y / PS]; }));
-  b.body = body;
+  body.setUserData(b); b.body = body;
 }
 function isHost(){ return !NET || NET.role === 'host'; }
-function myTurn(){ if (MODE !== 'net') return true; return NET && turnP === NET.me; }
+function myTurn(){ if (MODE === 'solo') return true; if (MODE === 'cpu') return turnP === 0; return NET && turnP === NET.me; }
 function pname(p){
   if (MODE === 'net') return p === NET.me ? 'あなた' : (NET.names[p] || '相手');
-  return p ? 'あお' : 'あか';
+  return p ? 'CPU' : 'あなた';
 }
 
 function newRound(starter){
   roundNo++;
   if (isHost()) {
     world = PL.World({gravity:PL.Vec2(0, CFG.g)});
+    world.on('begin-contact', onContact);
     world.createBody({type:'static', position:PL.Vec2(0, (GROUND_Y + 20) / PS)}).createFixture(PL.Box(STAGE_W / 2 / PS, 20 / PS), {friction:CFG.gfric});
   } else world = null;
-  placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; cur = null;
+  CPU = null; placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; cur = null;
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
   if (isHost()) {
@@ -767,7 +815,9 @@ function newTurn(){
   computeTop();
   var pi = nextPi(), sc = randScale(POOL[pi]);
   beginAim(pi, sc);
+  if (count > 0) { sfx('next'); if (NET) send({t:'fx', k:'next'}); }
   if (NET) send({t:'turn', pi:pi, sc:sc, tp:turnP, n:count, top:topY});
+  if (MODE === 'cpu' && turnP === 1) cpuStart();
 }
 function beginAim(pi, sc){
   camTarget = Math.min(baseCam(), topY - 300);
@@ -786,28 +836,29 @@ function updHud(){
   else $('tally').innerHTML = '<span style="color:var(--p0d)">' + esc(pname(0)) + ' ' + w[0] + '</span><span>-</span><span style="color:var(--p1d)">' + w[1] + ' ' + esc(pname(1)) + '</span>';
   var mine = myTurn() && state === 'aim';
   $('ctrl').style.visibility = mine ? 'visible' : 'hidden';
-  $('waitTx').textContent = (MODE === 'net' && !mine && state !== 'over') ? (state === 'aim' ? pname(turnP) + 'が考え中…' : 'ゆれてる…') : '';
+  $('waitTx').textContent = (MODE !== 'solo' && !mine && state !== 'over' && state !== 'idle') ? (state === 'aim' ? pname(turnP) + 'が考え中…' : 'ゆれてる…') : '';
 }
 function placeCur(){ setPos(cur, curX, cur.position.y); var hy = cur.position.y - cur.bounds.max.y; setPos(cur, curX, topY - CFG.gap + hy); }
 function doDrop(){
   if (state !== 'aim' || !cur) return;
   if (!isHost()) { if (!myTurn()) return; send({t:'drop', x:curX, a:curAng}); state = 'sent'; updHud(); return; }
-  if (!myTurn() && !NET_DROP) return;
+  if (!myTurn() && !NET_DROP && !CPU_DROP) return;
   setAng(cur, curAng); angNow = curAng; placeCur();
   cur.plugin.id = ++idSeq; byId[cur.plugin.id] = cur;
   addPhysics(cur); placed.push(cur);
   if (NET) send({t:'add', id:cur.plugin.id, pi:cur.plugin.pi, sc:cur.plugin.sc, x:curX, a:curAng});
+  sfx('drop');
   cur = null; state = 'drop'; dropT = 0; still = 0; hintOn = false; updHud();
 }
 var NET_DROP = false;
-function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; aimSend(true); } }
+function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; sfx('rot'); aimSend(true); } }
 $('rot').onclick = rotate; $('drop').onclick = doDrop;
 var quitArm = 0;
 $('quit').onclick = function(){
   if (Date.now() - quitArm > 2500) { quitArm = Date.now(); toast('もう一回おすと やめるよ'); return; }
   leave();
 };
-function leave(){ state = 'idle'; if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
+function leave(){ state = 'idle'; CPU = null; if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
 addEventListener('keydown', function(e){
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (state !== 'aim' || !myTurn()) return;
@@ -825,9 +876,10 @@ function aimSend(force){ if (!NET || NET.role !== 'guest' || !myTurn()) return; 
 
 function gameOver(who){
   if (state === 'over') return;
-  state = 'over'; loser = who; overT = 0; cur = null;
+  state = 'over'; loser = who; overT = 0; cur = null; CPU = null;
+  sfx('splash'); vib([40, 40, 80]); if (NET) send({t:'fx', k:'splash'});
   if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
-  else if (MODE === 'local') LOCALWINS[1 - who]++;
+  else if (MODE === 'cpu') { LOCALWINS[1 - who]++; S.wins[1 - who]++; save(); }
   else { NET.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:NET.wins}); }
   updHud();
 }
@@ -842,9 +894,9 @@ function renderResult(){
     var b = S.best[TOPIC] || 0;
     h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (NEWBEST ? '🏆 さいこう記録！' : '🏆 さいこう ' + b + ' こ') + ' ・「' + esc(TOPIC) + '」</div>';
     h += '<button class="big" id="rAgain">もう一回</button>';
-  } else if (MODE === 'local') {
+  } else if (MODE === 'cpu') {
     var w = 1 - loser;
-    h += '<div id="resBig" style="color:' + (w ? 'var(--p1d)' : 'var(--p0d)') + '">' + pname(w) + 'の勝ち！</div><div id="resSub">' + pname(loser) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>';
+    h += '<div id="resBig" style="color:' + (w ? 'var(--p1d)' : 'var(--p0d)') + '">' + (w ? 'ざんねん… CPUの勝ち' : '🏆 あなたの勝ち！') + '</div><div id="resSub">' + pname(loser) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>';
     h += tchips(LOCALWINS) + '<button class="big" id="rAgain">もう一回</button>';
   } else {
     var win = loser !== NET.me, them = 1 - NET.me;
@@ -861,7 +913,7 @@ function renderResult(){
   h += '<button class="link" id="rLeave">' + (MODE === 'net' ? '部屋を出る' : 'タイトルへ') + '</button>';
   c.innerHTML = h; fillMini();
   var on = function(id, f){ var e = $(id); if (e) e.onclick = f; };
-  on('rAgain', function(){ newRound(MODE === 'local' ? roundNo % 2 : 0); });
+  on('rAgain', function(){ newRound(MODE === 'cpu' ? roundNo % 2 : 0); });
   on('rWant', function(){ if (NET.want[NET.me]) return; NET.want[NET.me] = true; send({t:'want'}); renderResult(); checkWant(); });
   on('rRe', function(){ reSearch(TOPIC); });
   on('rTopicBtn', function(){ if (MODE === 'net') { $('topicBox').classList.remove('hidden'); $('rTopic').focus(); } else { state = 'idle'; show('home'); } });
@@ -869,7 +921,11 @@ function renderResult(){
   on('rLeave', function(){ leave(); });
 }
 function tchips(w){ return '<div class="tchips"><span style="background:#fdeee8;color:var(--p0d)">' + esc(pname(0)) + ' ' + w[0] + '勝</span><span style="background:#e9f1fc;color:var(--p1d)">' + esc(pname(1)) + ' ' + w[1] + '勝</span></div>'; }
-function showResult(){ renderResult(); show('res'); }
+function showResult(){
+  renderResult(); show('res');
+  if (MODE === 'solo') sfx(NEWBEST ? 'best' : 'end');
+  else { var meLost = MODE === 'net' ? loser === NET.me : loser === 0; sfx(meLost ? 'lose' : 'win'); if (!meLost) vib([20, 60, 20]); }
+}
 function reSearch(topic){
   if (MODE !== 'net') { $('topic').value = topic; startLocal(); return; }
   if (NET.role !== 'host') return;
@@ -880,7 +936,7 @@ function reSearch(topic){
 /* ---------- reactions + chat ---------- */
 var RX = ['すごい！','(笑)','www','(ﾟДﾟ)','ドンマイ','おしい！','ナイス！','よろしく'];
 $('rxBar').innerHTML = RX.map(function(r, i){ return '<button data-k="' + i + '">' + r + '</button>'; }).join('');
-$('rxBar').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || !NET) return; var k = +b.dataset.k; send({t:'rx', k:k}); bubble(NET.me, k); if (document.body.classList.contains('play')) document.body.classList.remove('rxOpen'); });
+$('rxBar').addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b || !NET) return; var k = +b.dataset.k; send({t:'rx', k:k}); bubble(NET.me, k); sfx('pop'); if (document.body.classList.contains('play')) document.body.classList.remove('rxOpen'); });
 $('rxBtn').onclick = function(){ document.body.classList.toggle('rxOpen'); document.body.classList.remove('chatOpen'); };
 $('chatBtn').onclick = function(){ document.body.classList.toggle('chatOpen'); document.body.classList.remove('rxOpen'); if (document.body.classList.contains('chatOpen')) $('chatIn').focus(); };
 $('chatClose').onclick = function(){ document.body.classList.remove('chatOpen'); $('chatIn').blur(); };
@@ -1029,8 +1085,9 @@ function onNet(m){
     case 'hello': NET.names[them] = String(m.name || '').slice(0, 8); lobbyStatus(); if (host && NET.piecesDone) sendPieces(); updHud(); break;
     case 'full': toast('その部屋はいっぱいだよ'); leave(); break;
     case 'bye': NET.leaving = true; toast('相手が部屋を出たよ'); setTimeout(function(){ state = 'idle'; NET = null; setNetClass(); show('home'); }, 1400); break;
-    case 'chat': chatLine(them, String(m.s || '').slice(0, 40)); break;
-    case 'rx': bubble(them, m.k | 0); break;
+    case 'chat': chatLine(them, String(m.s || '').slice(0, 40)); sfx('blip'); break;
+    case 'rx': bubble(them, m.k | 0); sfx('pop'); break;
+    case 'fx': if (!host) { sfx(m.k, m.v); if (m.k === 'land') vib(8); } break;
     // guest side
     case 'reload': if (!host) { TOPIC = m.topic || TOPIC; $('lobThumbs').innerHTML = ''; show('lobby'); lobbyStatus('「' + TOPIC + '」のパーツをさがしなおしてるよ…'); } break;
     case 'pstart': if (!host) { NET.inPieces = new Array(m.n); TOPIC = m.topic || ''; $('lobThumbs').innerHTML = ''; show('lobby'); lobbyStatus('パーツを受け取ってるよ… 0/' + m.n); } break;
@@ -1042,7 +1099,7 @@ function onNet(m){
     case 'add': if (!host) {
       var b = cur && cur.plugin.pi === m.pi && Math.abs(cur.plugin.sc - m.sc) < 1e-9 ? cur : makeBody(m.pi, m.sc);
       setAng(b, m.a); setPos(b, m.x, b.position.y);
-      b.plugin.id = m.id; b.plugin.tg = {x:b.position.x, y:b.position.y, a:b.angle}; byId[m.id] = b; placed.push(b); cur = null; state = 'drop'; hintOn = false; updHud();
+      b.plugin.id = m.id; b.plugin.tg = {x:b.position.x, y:b.position.y, a:b.angle}; byId[m.id] = b; placed.push(b); cur = null; state = 'drop'; hintOn = false; updHud(); sfx('drop');
     } break;
     case 'over': if (!host) { NET.wins = m.wins || NET.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); } break;
     case 'want': NET.want[them] = true; if (state === 'over') renderResult(); checkWant(); break;
@@ -1094,6 +1151,7 @@ function step(now){
       placed.forEach(function(b){ var g = b.plugin.tg; if (!g) return; var k = Math.min(1, dt * 14);
         var da = g.a - b.angle; b.angle += da * k; setPos(b, b.position.x + (g.x - b.position.x) * k, b.position.y + (g.y - b.position.y) * k); });
     }
+    if (state === 'aim' && cur && CPU) cpuStep(dt);
     if (state === 'aim' && cur) { angNow += (curAng - angNow) * Math.min(1, dt * 14); setAng(cur, angNow); placeCur(); }
     if (state === 'over') { overT += dt; if (overT > 1.3 && $('res').classList.contains('hidden') && document.body.classList.contains('play')) showResult(); }
   }
@@ -1152,6 +1210,167 @@ function showCredits(){
     return '<div><b>' + esc(c.title) + '</b><br>' + esc(c.artist || '作者不明') + ' ・ ' + esc(c.lic) + '<br><a href="' + esc(c.url) + '" target="_blank" rel="noopener">' + (c.artist === 'いらすとや' ? 'いらすとや' : 'Wikimedia Commons') + '</a></div>';
   }).join('') : 'いまのパーツにはクレジットがないよ';
   $('cred').classList.remove('hidden');
+}
+
+
+/* ---------- settings / changelog ---------- */
+function verUnseen(){ if (S.seenVer === VERSION) return false; if (!S.seenVer && !S.topic) { S.seenVer = VERSION; save(); return false; } return true; }
+function refreshVer(){ var b = $('ver'), nw = verUnseen(); b.textContent = 'v' + VERSION + (nw ? ' ・ 更新内容を見る' : ''); b.classList.toggle('new', nw); }
+function segOn(id, v){ Array.prototype.forEach.call($(id).children, function(b){ b.classList.toggle('on', +b.dataset.v === +v); }); }
+function openSet(){ ac(); segOn('sB', SET.bgm); segOn('sS', SET.se); segOn('sV', SET.vib); $('sVer').textContent = VERSION; $('sNew').classList.toggle('hidden', !verUnseen()); xArm = 0; $('sX').textContent = 'リセット'; $('setOv').classList.remove('hidden'); }
+function openChg(){
+  S.seenVer = VERSION; save(); refreshVer();
+  $('chgBody').innerHTML = CHANGELOG.map(function(c){ return '<div><b>v' + c.v + '<span style="font-weight:500;color:var(--muted);font-size:12px;margin-left:8px">' + c.d + '</span></b><ul>' + c.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>'; }).join('');
+  $('chgOv').classList.remove('hidden');
+}
+$('setBtn').onclick = openSet; $('gSet').onclick = openSet;
+$('sC').onclick = function(){ $('setOv').classList.add('hidden'); };
+$('sU').onclick = function(){ openChg(); };
+$('ver').onclick = function(){ openChg(); };
+$('chgC').onclick = function(){ $('chgOv').classList.add('hidden'); if (!$('setOv').classList.contains('hidden')) openSet(); };
+$('setOv').addEventListener('click', function(e){ if (e.target === this) this.classList.add('hidden'); });
+$('chgOv').addEventListener('click', function(e){ if (e.target === this) this.classList.add('hidden'); });
+$('sB').onclick = function(e){ var b = e.target.closest('button'); if (!b) return; SET.bgm = +b.dataset.v; save(); segOn('sB', SET.bgm); ac(); bgmApply(); };
+$('sS').onclick = function(e){ var b = e.target.closest('button'); if (!b) return; SET.se = +b.dataset.v; save(); segOn('sS', SET.se); sfx('tap'); };
+$('sV').onclick = function(e){ var b = e.target.closest('button'); if (!b) return; SET.vib = +b.dataset.v; save(); segOn('sV', SET.vib); vib(30); };
+var xArm = 0;
+$('sX').onclick = function(){ if (Date.now() - xArm > 2500) { xArm = Date.now(); this.textContent = 'もう一回おす'; return; } S.best = {}; S.wins = [0, 0]; save(); this.textContent = 'リセットしたよ'; xArm = 0; };
+refreshVer();
+
+/* ---------- sound: everything is made here with Web Audio (no sound files) ---------- */
+var AC = null, AU = {timer:null, next:0, step:0, out:null, noise:null};
+function ac(){
+  if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; } }
+  if (AC.state === 'suspended') { try { AC.resume(); } catch(e) {} }
+  bgmApply();
+}
+addEventListener('pointerdown', ac, true);
+addEventListener('click', function(e){ var b = e.target.closest && e.target.closest('button'); if (b && b.id !== 'drop' && b.id !== 'rot' && !b.closest('#rxBar')) sfx('tap'); }, true);
+function vib(p){ if (SET.vib && navigator.vibrate) { try { navigator.vibrate(p); } catch(e) {} } }
+function mtof(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+function noiseBuf(){ if (!AU.noise) { var n = AC.sampleRate * 0.6, b = AC.createBuffer(1, n, AC.sampleRate), d = b.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; AU.noise = b; } return AU.noise; }
+function env(g, t, a, peak, d){ g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+function osc(type, f, t, a, peak, d, dest, slide){
+  var o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(f * slide, t + a + d);
+  env(g, t, a, peak, d); o.connect(g); g.connect(dest); o.start(t); o.stop(t + a + d + 0.05);
+}
+function noise(t, d, peak, freq, q, dest){
+  var s = AC.createBufferSource(), f = AC.createBiquadFilter(), g = AC.createGain();
+  s.buffer = noiseBuf(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q || 1;
+  env(g, t, 0.005, peak, d); s.connect(f); f.connect(g); g.connect(dest); s.start(t); s.stop(t + d + 0.05);
+}
+// soft wooden mallet: the tone of the music box-ish melody
+function mallet(m, t, vol, dest){ var f = mtof(m); osc('sine', f, t, 0.004, vol, 0.42, dest); osc('sine', f * 4, t, 0.002, vol * 0.16, 0.08, dest); osc('triangle', f * 2, t, 0.003, vol * 0.12, 0.16, dest); }
+
+// BGM: an original, gentle loop in F major, 96 bpm, 8 bars (about 20 seconds)
+var BGM_VOL = [0, 0.22, 0.42, 0.7], BGM_STEP = 60 / 96 / 2;
+var BGM_CH = [[41, [65, 69, 72]], [38, [62, 65, 69]], [46, [62, 65, 70]], [48, [64, 67, 72]], [41, [65, 69, 72]], [45, [64, 69, 72]], [46, [62, 65, 70]], [48, [64, 67, 72]]];
+var BGM_MEL = [[69,0,72,0,74,72,69,0],[74,0,72,69,67,0,69,0],[65,0,67,69,72,0,74,0],[72,0,0,69,67,0,0,0],[69,72,74,0,77,0,74,72],[72,0,69,0,67,69,0,0],[74,0,72,0,69,67,65,0],[67,0,69,0,67,0,0,0]];
+function bgmOut(){ if (!AU.out) { AU.out = AC.createGain(); AU.out.gain.value = BGM_VOL[SET.bgm] || 0; var lp = AC.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 4200; AU.out.connect(lp); lp.connect(AC.destination); } return AU.out; }
+function bgmApply(){
+  if (!AC) return;
+  bgmOut().gain.setTargetAtTime(BGM_VOL[SET.bgm] || 0.0001, AC.currentTime, 0.15);
+  if (SET.bgm && !AU.timer) { AU.next = AC.currentTime + 0.12; AU.step = 0; AU.timer = setInterval(bgmTick, 60); }
+  if (!SET.bgm && AU.timer) { clearInterval(AU.timer); AU.timer = null; }
+}
+function bgmTick(){
+  if (!AC || AC.state !== 'running') return;
+  if (AU.next < AC.currentTime - 0.5) AU.next = AC.currentTime + 0.05;
+  while (AU.next < AC.currentTime + 0.3) { bgmStep(AU.step, AU.next); AU.step = (AU.step + 1) % 64; AU.next += BGM_STEP; }
+}
+function bgmStep(i, t){
+  var out = bgmOut(), bar = i >> 3, pos = i & 7, ch = BGM_CH[bar], m = BGM_MEL[bar][pos];
+  if (pos === 0 || pos === 4) osc('triangle', mtof(ch[0] - (pos ? 0 : 12) + (pos ? 7 : 12)), t, 0.01, 0.13, 0.5, out);
+  if (pos === 2 || pos === 6) ch[1].forEach(function(n, k){ osc('triangle', mtof(n - 12), t + k * 0.012, 0.01, 0.035, 0.32, out); });
+  if (pos === 0) ch[1].forEach(function(n){ osc('sine', mtof(n), t, 0.25, 0.018, BGM_STEP * 7, out); });
+  if (m) mallet(m, t, 0.1, out);
+  if (pos & 1) noise(t, 0.04, 0.012, 7000, 0.7, out);
+}
+
+// sound effects
+function sfx(k, v){
+  if (!AC || !SET.se || AC.state !== 'running') return;
+  var t = AC.currentTime + 0.005, d = AC.destination;
+  switch (k) {
+    case 'tap': osc('sine', 1100, t, 0.003, 0.05, 0.05, d); break;
+    case 'rot': osc('sine', 520, t, 0.004, 0.06, 0.08, d, 1.7); break;
+    case 'drop': osc('sine', 760, t, 0.004, 0.06, 0.12, d, 0.5); break;
+    case 'land': v = Math.max(0.25, Math.min(1, v || 0.6));
+      osc('sine', 170 + Math.random() * 30, t, 0.003, 0.22 * v, 0.14, d, 0.6); osc('triangle', 520 + Math.random() * 80, t, 0.002, 0.05 * v, 0.06, d); noise(t, 0.05, 0.05 * v, 1800, 1.2, d); break;
+    case 'next': mallet(84, t, 0.06, d); mallet(88, t + 0.09, 0.05, d); break;
+    case 'splash': noise(t, 0.55, 0.22, 900, 0.8, d); noise(t + 0.08, 0.4, 0.1, 2400, 1, d); osc('sine', 420, t, 0.01, 0.08, 0.4, d, 0.3); break;
+    case 'win': [72, 76, 79, 84].forEach(function(m, j){ mallet(m, t + j * 0.11, 0.12, d); }); [72, 76, 79].forEach(function(m){ osc('sine', mtof(m), t + 0.45, 0.05, 0.03, 0.9, d); }); break;
+    case 'lose': [76, 72, 69, 65].forEach(function(m, j){ mallet(m, t + j * 0.16, 0.09, d); }); break;
+    case 'end': [72, 76, 79].forEach(function(m, j){ mallet(m, t + j * 0.12, 0.1, d); }); break;
+    case 'best': [79, 84, 88, 91].forEach(function(m, j){ mallet(m, t + j * 0.09, 0.09, d); }); break;
+    case 'pop': osc('sine', 600, t, 0.004, 0.07, 0.07, d, 2); break;
+    case 'blip': osc('sine', 1320, t, 0.003, 0.04, 0.04, d); osc('sine', 1760, t + 0.06, 0.003, 0.04, 0.05, d); break;
+  }
+}
+// a dropped piece touching something for the first time: "pokon"
+function onContact(c){
+  var a = c.getFixtureA().getBody(), b = c.getFixtureB().getBody();
+  [a, b].forEach(function(bd){
+    var pb = bd.getUserData(); if (!pb || pb.landed) return;
+    pb.landed = true;
+    var v = Math.min(1, bd.getLinearVelocity().length() * PS / 300);
+    sfx('land', v); vib(8); if (NET) send({t:'fx', k:'land', v:v});
+  });
+}
+
+/* ---------- CPU ---------- */
+var CPU = null, CPU_DROP = false;
+function bottomAt(pts, x){
+  var y = null;
+  for (var i = 0; i < pts.length; i++) {
+    var p = pts[i], q = pts[(i + 1) % pts.length];
+    if ((p.x - x) * (q.x - x) > 0 || p.x === q.x) continue;
+    var yy = p.y + (x - p.x) * (q.y - p.y) / (q.x - p.x); if (y === null || yy > y) y = yy;
+  }
+  return y;
+}
+// try every turn of the piece and many positions; look down with rays to see where it would rest, and prefer a wide, centred support
+function cpuPlan(){
+  var cache = {}, cands = [];
+  function surf(wx){
+    var key = Math.round(wx); if (key in cache) return cache[key];
+    var hit = null;
+    world.rayCast(PL.Vec2(key / PS, (topY - 600) / PS), PL.Vec2(key / PS, (GROUND_Y + 4) / PS), function(f, pt, n, fr){ hit = pt.y * PS; return fr; });
+    return (cache[key] = hit);
+  }
+  for (var k = 0; k < 8; k++) {
+    var a = k * Math.PI / 4, ca = Math.cos(a), sa = Math.sin(a);
+    var pts = cur.outline.map(function(q){ return {x:q.x * ca - q.y * sa, y:q.x * sa + q.y * ca}; });
+    var x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    pts.forEach(function(p){ x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); });
+    var cols = [];
+    for (var i = 0; i < 11; i++) { var xi = x0 + 1 + (x1 - x0 - 2) * i / 10, by = bottomAt(pts, xi); if (by !== null) cols.push({x:xi, y:by}); }
+    for (var cx = -150; cx <= 150; cx += 5) {
+      var d = Infinity, sy = [], over = 0;
+      cols.forEach(function(c){ var s = surf(cx + c.x); sy.push(s); if (s === null) over++; else d = Math.min(d, s - c.y); });
+      if (!isFinite(d)) continue;
+      var con = []; cols.forEach(function(c, j){ if (sy[j] !== null && sy[j] - c.y - d < 3) con.push(c.x); });
+      var lo = Math.min.apply(null, con), hi = Math.max.apply(null, con), margin = Math.min(-lo, hi);
+      var score = margin * 1.2 + con.length * 1.5 - (y1 - y0) * 0.12 - Math.abs(cx) * 0.03 - over * 3 + (d + y0) * 0.02;
+      if (margin < 2) score -= 40;
+      cands.push({score:score, x:cx, k:k});
+    }
+  }
+  cands.sort(function(p, q){ return q.score - p.score; });
+  if (!cands.length) return {x:0, k:0};
+  var pick = Math.random() < 0.7 ? cands[0] : cands[Math.min(cands.length - 1, 1 + Math.floor(Math.random() * 3))];
+  return {x:pick.x + (Math.random() * 8 - 4), k:pick.k};
+}
+function cpuStart(){ CPU = {t:0, plan:null, wait:0.55 + Math.random() * 0.4}; }
+function cpuStep(dt){
+  var c = CPU; c.t += dt;
+  if (!c.plan) { if (c.t < c.wait) return; c.plan = cpuPlan(); c.turns = c.plan.k; c.rt = 0; return; }
+  if (c.turns > 0) { c.rt += dt; if (c.rt > 0.22) { c.rt = 0; c.turns--; curAng += Math.PI / 4; sfx('rot'); } return; }
+  var dx = c.plan.x - curX, sp = 170 * dt;
+  if (Math.abs(dx) > sp) { curX += dx > 0 ? sp : -sp; return; }
+  curX = c.plan.x; c.hold = (c.hold || 0) + dt;
+  if (c.hold > 0.35) { CPU = null; CPU_DROP = true; doDrop(); CPU_DROP = false; }
 }
 
 window.__tb = {jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); newRound(0); }, drop:doDrop, rotate:rotate,
