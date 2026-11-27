@@ -214,7 +214,7 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
     <div id="topicHome"><div id="topicBlock" style="display:flex;flex-direction:column;gap:12px">
       <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
       <div class="chips" id="chips"></div>
-      <div class="src" id="srcSeg"><span class="srcLbl">パーツのもと（いくつでも えらべるよ）</span><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button><button data-s="wiki">ウィキメディア</button><button data-s="fr">🙂 なかまたち</button></div>
+      <div class="src" id="srcSeg"><span class="srcLbl">パーツのもと（いくつでも えらべるよ）</span><button data-s="fr">🙂 なかまたち</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button><button data-s="wiki">ウィキメディア</button></div>
     </div></div>
     <div id="lenBox" class="hidden"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lenSeg"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div><div class="lenNote">先手はランダム。お題は先手から交代できめるよ</div></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
@@ -429,6 +429,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.13.2', d:'2026-11-28', items:['🔀 パーツのもとの並びを「なかまたち・いらすとや・えもじ・ウィキメディア」にしました']},
   {v:'0.13.1', d:'2026-11-28', items:['🙂 「なかまたち」を、お題ではなく「パーツのもと」（いらすとや・えもじ・ウィキメディアのならび）で選ぶようにしました。なかまたちだけなら、お題はいりません。ほかといっしょに選ぶと、お題の画像になかまたちがまざります','🫛 みどりのなかまの左右が欠けていたのを直しました']},
   {v:'0.13.0', d:'2026-11-28', items:['🙂 「なかまたち」を追加しました。れんしゅうに出てくる顔つきのなかまたち（13しゅるい）で遊べます。画像をさがさないので、すぐ始められます','🌀 パーツをまわしたとき、上下にガタガタ動かず、まん中を軸にきれいに回るようにしました','📋 更新内容の見せ方を、ほかのゲームとそろえました（いちばん新しい更新だけ開いて、前の分は日付ごとにたたみます）']},
   {v:'0.12.1', d:'2026-11-28', items:['📝 プレイ記録の送信の同意を、ゲームポータル・ほかのゲームと同じ画面・同じ内容にそろえました','⚙ 設定に「送信内容について」を追加しました']},
@@ -487,7 +488,7 @@ $('chips').innerHTML = CHIPS.map(function(c){ return '<button data-t="' + c[0] +
 $('chips').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) $('topic').value = b.dataset.t; });
 function topicQuery(t){ for (var i = 0; i < CHIPS.length; i++) if (CHIPS[i][0] === t) return CHIPS[i][1]; return t; }
 if (S.topic) $('topic').value = S.topic;
-var SRC_NAME = {ira:'いらすとや', emo:'えもじ', wiki:'ウィキ', fr:'なかまたち'};
+var SRC_NAME = {fr:'なかまたち', ira:'いらすとや', emo:'えもじ', wiki:'ウィキ'};
 if (!Array.isArray(S.srcs)) S.srcs = [S.src === 'ira' ? 'ira' : 'wiki'];
 S.srcs = S.srcs.filter(function(x){ return SRC_NAME[x]; }); if (!S.srcs.length) S.srcs = ['wiki'];
 function frOnly(){ return S.srcs.length === 1 && S.srcs[0] === 'fr'; }
