@@ -35,6 +35,9 @@ input.tx:focus{border-color:var(--p1)}
 #home h1 small{display:block;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:3px;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:15px;padding:6px 12px;border-radius:999px;border-width:2px}
+.src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.src button{font-size:14px;padding:6px 12px;border-radius:999px;border-width:2px}
+.src button.on{background:#e9f1fc;border-color:var(--p1);color:var(--p1d)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .seg button{font-size:16px;padding:11px 0}
 .seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
@@ -135,6 +138,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
   <div class="card">
     <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
     <div class="chips" id="chips"></div>
+    <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button></div>
     <div class="seg" id="mode"><button data-m="solo">ひとりで</button><button data-m="local">ふたりで</button><button data-m="net">ネットで</button></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
       <input id="myName" class="tx" type="text" maxlength="8" placeholder="なまえ" autocomplete="off" style="font-size:17px;padding:10px 12px">
@@ -216,7 +220,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <script>
 (function(){
 'use strict';
-var VERSION = '0.3.0';
+var VERSION = '0.4.0';
 var $ = function(id){ return document.getElementById(id); };
 var PL = planck, PS = 30;  // physics: planck.js (Box2D), 30 units = 1 m
 $('ver').textContent = 'v' + VERSION;
@@ -248,6 +252,10 @@ $('chips').innerHTML = CHIPS.map(function(c){ return '<button>' + c[0] + '</butt
 $('chips').addEventListener('click', function(e){ if (e.target.tagName === 'BUTTON') $('topic').value = e.target.textContent; });
 function topicQuery(t){ for (var i = 0; i < CHIPS.length; i++) if (CHIPS[i][0] === t) return CHIPS[i][1]; return t; }
 if (S.topic) $('topic').value = S.topic;
+if (S.src !== 'ira') S.src = 'wiki';
+function setSrc(v){ S.src = v; save(); Array.prototype.forEach.call($('srcSeg').querySelectorAll('button'), function(b){ b.classList.toggle('on', b.dataset.s === v); }); }
+$('srcSeg').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setSrc(b.dataset.s); });
+setSrc(S.src);
 if (S.name) $('myName').value = S.name;
 var MODE = S.mode;
 function setMode(m){
@@ -432,10 +440,67 @@ function strip(h){ var e = document.createElement('div'); e.innerHTML = h || '';
 function thumbCanvas(pc, size){ var c = document.createElement('canvas'); c.width = pc.w; c.height = pc.h; c.getContext('2d').drawImage(pc.cv, 0, 0); return c; }
 
 // cb.progress(pc) each piece, cb.done() at end. Returns cancel token number.
+/* ---------- いらすとや (Blogger feed, JSONP) ---------- */
+var jpN = 0;
+function jsonp(url){
+  return new Promise(function(res, rej){
+    var name = '__tbjp' + (++jpN), sc = document.createElement('script'), done = false;
+    var t = setTimeout(function(){ fin(); rej('timeout'); }, 10000);
+    function fin(){ done = true; clearTimeout(t); try { delete window[name]; } catch(e) { window[name] = undefined; } sc.remove(); }
+    window[name] = function(d){ if (done) return; fin(); res(d); };
+    sc.onerror = function(){ if (done) return; fin(); rej('error'); };
+    sc.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'callback=' + name; document.head.appendChild(sc);
+  });
+}
+function hira2kata(s){ return s.replace(/[\u3041-\u3096]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) + 0x60); }); }
+function kata2hira(s){ return s.replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
+var IRA_BAD = /文字|ロゴ|タイトル|フレーム|背景|パターン|アイコン|マーク|イラスト集|セット|まとめ/;
+function iraBig(u){ return u.replace(/\/s\d+(-[a-z])?\//, '/s400/').replace(/=s\d+(-[a-z])?$/, '=s400'); }
+function iraSearch(q){
+  var u = 'https://www.irasutoya.com/feeds/posts/summary?alt=json-in-script&max-results=60&q=' + encodeURIComponent(q);
+  return jsonp(u).then(function(j){
+    var es = (j && j.feed && j.feed.entry) || [];
+    return es.map(function(e){
+      var th = e.media$thumbnail && e.media$thumbnail.url, link = '';
+      (e.link || []).forEach(function(l){ if (l.rel === 'alternate') link = l.href; });
+      return th ? {title:(e.title && e.title.$t) || '', thumb:iraBig(th), link:link} : null;
+    }).filter(function(o){ return o && !IRA_BAD.test(o.title); });
+  }).catch(function(){ return []; });
+}
+function searchIra(topic, cb, my, used){
+  var base = topicQuery(topic), qs = [];
+  [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && qs.indexOf(q) < 0) qs.push(q); });
+  var seen = {}, fresh = [], old = [], qi = 0, busy = 0, done = false, tainted = 0, tried = 0;
+  function finish(){ if (done || my !== job) return; done = true; if (tried && tainted === tried && !POOL.length) toast('いらすとやの画像は、形が読み取れなかったよ'); cb.done(); }
+  function next(){ return fresh.length ? fresh.shift() : (qi >= qs.length ? old.shift() : null); }
+  function pump(){
+    if (my !== job || done) return;
+    if (POOL.length >= TARGET) return finish();
+    var o;
+    while (busy < 4 && (o = next())) {
+      busy++;
+      (function(o){
+        loadImg(o.thumb, true).then(function(im){
+          if (my !== job || POOL.length >= TARGET) return;
+          tried++;
+          var pc = makePiece(im, {});
+          if (pc === null) { try { var t = document.createElement('canvas').getContext('2d'); t.drawImage(im, 0, 0); t.getImageData(0, 0, 1, 1); } catch(e) { tainted++; } }
+          if (pc) { pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = o.thumb; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc); }
+        }).catch(function(){ tried++; tainted++; }).then(function(){ busy--; pump(); });
+      })(o);
+    }
+    if (busy === 0 && !fresh.length) {
+      if (qi < qs.length) { iraSearch(qs[qi++]).then(function(list){ list.forEach(function(o){ if (!seen[o.thumb]) { seen[o.thumb] = 1; (used[o.thumb] ? old : fresh).push(o); } }); pump(); }); }
+      else if (!old.length) finish();
+    }
+  }
+  pump();
+}
 function searchPieces(topic, cb){
   var my = ++job; POOL = []; TOPIC = topic;
-  if (SEEN.topic !== topic) SEEN = {topic:topic, titles:{}};
+  if (SEEN.topic !== S.src + ':' + topic) SEEN = {topic:S.src + ':' + topic, titles:{}};
   var used = SEEN.titles;
+  if (S.src === 'ira') { searchIra(topic, cb, my, used); return my; }
   toEnglish(topicQuery(topic)).then(function(en){
     if (my !== job) return;
     var qs = [en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated'];
@@ -818,7 +883,7 @@ $('lobGo').onclick = function(){
   NET.inGame = true; NET.want = [false, false]; newRound(roundNo % 2);
 };
 $('lobBack').onclick = function(){ job++; leave(); };
-function pieceData(pc){ return {u:pc.cv.toDataURL('image/png'), w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null}; }
+function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null}; }
 function sendPieces(){
   NET.ready = false; lobbyStatus();
   send({t:'pstart', n:POOL.length, topic:TOPIC});
@@ -853,9 +918,9 @@ function joinRoom(){
 }
 function buildPieces(list){
   return Promise.all(list.map(function(d){
-    return loadImg(d.u, false).then(function(im){
-      var c = document.createElement('canvas'); c.width = d.w; c.height = d.h; c.getContext('2d').drawImage(im, 0, 0);
-      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit};
+    return loadImg(d.url || d.u, false).then(function(im){
+      var c = document.createElement('canvas'); c.width = d.w; c.height = d.h; c.getContext('2d').drawImage(im, 0, 0, d.w, d.h);
+      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit, url:d.url || null};
     });
   }));
 }
@@ -984,7 +1049,7 @@ function roundRect(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.ar
 
 function showCredits(){
   $('credList').innerHTML = CREDITS.length ? CREDITS.map(function(c){
-    return '<div><b>' + esc(c.title) + '</b><br>' + esc(c.artist || '作者不明') + ' ・ ' + esc(c.lic) + '<br><a href="' + esc(c.url) + '" target="_blank" rel="noopener">Wikimedia Commons</a></div>';
+    return '<div><b>' + esc(c.title) + '</b><br>' + esc(c.artist || '作者不明') + ' ・ ' + esc(c.lic) + '<br><a href="' + esc(c.url) + '" target="_blank" rel="noopener">' + (c.artist === 'いらすとや' ? 'いらすとや' : 'Wikimedia Commons') + '</a></div>';
   }).join('') : 'いまのパーツにはクレジットがないよ';
   $('cred').classList.remove('hidden');
 }
