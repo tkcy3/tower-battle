@@ -35,7 +35,7 @@ input.tx:focus{border-color:var(--p1)}
 #home h1 small{display:block;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:3px;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:15px;padding:6px 12px;border-radius:999px;border-width:2px}
-.src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+.src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);flex-wrap:wrap}
 .src button{font-size:14px;padding:6px 12px;border-radius:999px;border-width:2px}
 .src button.on{background:#e9f1fc;border-color:var(--p1);color:var(--p1d)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -138,7 +138,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
   <div class="card">
     <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
     <div class="chips" id="chips"></div>
-    <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button></div>
+    <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
     <div class="seg" id="mode"><button data-m="solo">ひとりで</button><button data-m="local">ふたりで</button><button data-m="net">ネットで</button></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
       <input id="myName" class="tx" type="text" maxlength="8" placeholder="なまえ" autocomplete="off" style="font-size:17px;padding:10px 12px">
@@ -221,7 +221,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <script>
 (function(){
 'use strict';
-var VERSION = '0.4.2';
+var VERSION = '0.5.0';
 var $ = function(id){ return document.getElementById(id); };
 var PL = planck, PS = 30;  // physics: planck.js (Box2D), 30 units = 1 m
 $('ver').textContent = 'v' + VERSION;
@@ -253,10 +253,16 @@ $('chips').innerHTML = CHIPS.map(function(c){ return '<button>' + c[0] + '</butt
 $('chips').addEventListener('click', function(e){ if (e.target.tagName === 'BUTTON') $('topic').value = e.target.textContent; });
 function topicQuery(t){ for (var i = 0; i < CHIPS.length; i++) if (CHIPS[i][0] === t) return CHIPS[i][1]; return t; }
 if (S.topic) $('topic').value = S.topic;
-if (S.src !== 'ira') S.src = 'wiki';
-function setSrc(v){ S.src = v; save(); Array.prototype.forEach.call($('srcSeg').querySelectorAll('button'), function(b){ b.classList.toggle('on', b.dataset.s === v); }); }
-$('srcSeg').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setSrc(b.dataset.s); });
-setSrc(S.src);
+var SRC_NAME = {wiki:'ウィキ', ira:'いらすとや', emo:'えもじ'};
+if (!Array.isArray(S.srcs)) S.srcs = [S.src === 'ira' ? 'ira' : 'wiki'];
+S.srcs = S.srcs.filter(function(x){ return SRC_NAME[x]; }); if (!S.srcs.length) S.srcs = ['wiki'];
+function drawSrc(){ Array.prototype.forEach.call($('srcSeg').querySelectorAll('button'), function(b){ b.classList.toggle('on', S.srcs.indexOf(b.dataset.s) >= 0); }); }
+$('srcSeg').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return; var v = b.dataset.s, i = S.srcs.indexOf(v);
+  if (i >= 0) { if (S.srcs.length === 1) { toast('どれか1つは えらんでね'); return; } S.srcs.splice(i, 1); } else S.srcs.push(v);
+  S.srcs.sort(function(a, b2){ return Object.keys(SRC_NAME).indexOf(a) - Object.keys(SRC_NAME).indexOf(b2); }); save(); drawSrc();
+});
+drawSrc();
 if (S.name) $('myName').value = S.name;
 var MODE = S.mode;
 function setMode(m){
@@ -476,101 +482,151 @@ function iraL(label){ return iraFeed('/-/' + encodeURIComponent(label) + '?alt=j
 var IRA_LABEL = {'くるま':['車','乗り物'], 'どうぶつ':['動物'], 'くだもの':['フルーツ'], 'いす':['家具'], 'とり':['鳥'], 'おかし':['スイーツ'],
   'ねこ':['猫'], 'いぬ':['犬'], 'さかな':['魚'], 'むし':['虫'], 'はな':['花'], 'やさい':['野菜'], 'のりもの':['乗り物'], 'でんしゃ':['電車'], 'すし':['お寿司'], 'かい':['貝'], 'ぱん':['パン'], 'がっき':['楽器'], 'きょうりゅう':['恐竜'], 'たべもの':['食べ物'], 'おもちゃ':['おもちゃ'], 'かぐ':['家具'], 'かでん':['家電'], 'うちゅう':['宇宙'], 'しょくぶつ':['植物']};
 var IRA_PEOPLE = /人|男性|女性|男の子|女の子|子供|子ども|こども|赤ちゃん|おじいさん|おばあさん|家族|夫婦|会社員|学生|先生|お母さん|お父さん|カップル|店員|選手/;
-var IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0};
-function iraDiag(){ var d = $('loadDiag'); if (!d) return; var t = IRA_STAT; d.textContent = 'いらすとや：記事 ' + t.posts + '件 ・ 画像OK ' + (t.direct + t.proxy) + (t.proxy ? '（中継 ' + t.proxy + '）' : '') + ' ・ 読めない ' + t.fail + (t.shape ? ' ・ 形にできない ' + t.shape : ''); }
+var IRA_STAT = {direct:0, proxy:0};
 function readable(im){ try { var c = document.createElement('canvas'); c.width = c.height = 1; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 1, 1); x.getImageData(0, 0, 1, 1); return true; } catch(e) { return false; } }
 // try the image directly; if the server does not allow reading its pixels, go through an image relay that does
 function loadIra(url){
   var viaProxy = function(){ var pu = 'https://wsrv.nl/?url=' + encodeURIComponent(url) + '&output=png'; return loadImg(pu, true).then(function(im){ if (!readable(im)) throw 'tainted'; return {im:im, url:pu, via:'proxy'}; }); };
   return loadImg(url, true).then(function(im){ if (!readable(im)) throw 'tainted'; return {im:im, url:url, via:'direct'}; }).catch(viaProxy);
 }
-function searchIra(topic, cb, my, used){
-  IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0}; iraDiag();
-  var base = topicQuery(topic), vars = [];
-  [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && vars.indexOf(q) < 0) vars.push(q); });
-  var wantPeople = IRA_PEOPLE.test(topic);
-  iraQ(vars[0]).then(function(first){
-    if (my !== job) return;
+function variantsOf(topic){
+  var base = topicQuery(topic), vs = [];
+  [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && vs.indexOf(q) < 0) vs.push(q); });
+  return vs;
+}
+function rankList(list, used){
+  // unused first, then the most relevant, mixed up within the same relevance
+  list.forEach(function(x){ x.r = Math.random(); });
+  list.sort(function(a, b){ return ((used[a.id] ? 1 : 0) - (used[b.id] ? 1 : 0)) || (b.sc - a.sc) || (a.r - b.r); });
+  return list;
+}
+
+/* --- source: ウィキメディア・コモンズ --- */
+function candWiki(topic, used){
+  return toEnglish(topicQuery(topic)).then(function(en){
+    var qs = [en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated'];
+    return Promise.all(qs.map(commons)).then(function(rs){
+      var seen = {}, list = [];
+      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(5 - qi) * 100 - k, o:o}); }); });
+      return rankList(list, used);
+    });
+  });
+}
+function loadWiki(c){
+  var o = c.o;
+  return loadImg(o.ii.thumburl, true).then(function(im){
+    var pc = makePiece(im, {}); if (!pc) return null;
+    var md = o.ii.extmetadata || {};
+    pc.credit = {title:o.title.replace(/^File:/, ''), artist:strip(md.Artist && md.Artist.value), lic:(md.LicenseShortName && md.LicenseShortName.value) || '', url:o.ii.descriptionurl};
+    return pc;
+  });
+}
+
+/* --- source: いらすとや --- */
+function candIra(topic, used){
+  var vars = variantsOf(topic), wantPeople = IRA_PEOPLE.test(topic);
+  return iraQ(vars[0]).then(function(first){
     var lbs = (IRA_LABEL[topic] || IRA_LABEL[kata2hira(topic)] || []).slice();
     vars.forEach(function(v){ if (first.labels.indexOf(v) >= 0 && lbs.indexOf(v) < 0) lbs.push(v); });
-    var calls = lbs.map(iraL).concat(vars.slice(1).map(iraQ));
-    return Promise.all(calls).then(function(rest){
-      if (my !== job) return;
+    return Promise.all(lbs.map(iraL).concat(vars.slice(1).map(iraQ))).then(function(rest){
       var best = {};
       [first].concat(rest).forEach(function(r){ r.posts.forEach(function(p){
         if (IRA_BAD.test(p.title) || (!wantPeople && IRA_PEOPLE.test(p.title))) return;
         var sc = 0;
         if (p.labels.some(function(l){ return lbs.indexOf(l) >= 0; })) sc += 3;
         if (vars.some(function(v){ return p.title.indexOf(v) >= 0; })) sc += 2;
-        if (!best[p.thumb] || best[p.thumb].sc < sc) best[p.thumb] = {p:p, sc:sc, r:Math.random()};
+        if (!best[p.thumb] || best[p.thumb].sc < sc) best[p.thumb] = {id:p.thumb, sc:sc, o:p};
       }); });
-      var list = Object.keys(best).map(function(k){ return best[k]; });
-      IRA_STAT.posts = list.length; iraDiag();
-      // unused first, then the most relevant, mixed up within the same relevance
-      list.sort(function(a, b){ return ((used[a.p.thumb] ? 1 : 0) - (used[b.p.thumb] ? 1 : 0)) || (b.sc - a.sc) || (a.r - b.r); });
-      runIra(list.map(function(x){ return x.p; }), cb, my, used);
+      return rankList(Object.keys(best).map(function(k){ return best[k]; }), used);
     });
   });
 }
-function runIra(queue, cb, my, used){
-  var busy = 0, done = false;
-  function finish(){ if (done || my !== job) return; done = true; cb.done(); }
-  function pump(){
-    if (my !== job || done) return;
-    if (POOL.length >= TARGET) return finish();
-    var o;
-    while (busy < 4 && POOL.length + busy < TARGET + 2 && (o = queue.shift())) {
-      busy++;
-      (function(o){
-        loadIra(o.thumb).then(function(r){
-          if (my !== job || POOL.length >= TARGET) return;
-          IRA_STAT[r.via]++;
-          var pc = makePiece(r.im, {minFill:0.1});
-          if (!pc) { IRA_STAT.shape++; return; }
-          pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc);
-        }).catch(function(){ IRA_STAT.fail++; }).then(function(){ busy--; iraDiag(); pump(); });
-      })(o);
-    }
-    if (busy === 0 && !queue.length) finish();
-  }
-  pump();
+function loadIraC(c){
+  var o = c.o;
+  return loadIra(o.thumb).then(function(r){
+    IRA_STAT[r.via]++;
+    var pc = makePiece(r.im, {minFill:0.1}); if (!pc) return null;
+    pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url;
+    return pc;
+  });
 }
+
+/* --- source: えもじ（Microsoft Fluent Emoji 3D, MIT。キーワードは Unicode CLDR の日本語） --- */
+var EMO_RAW = "1f435|サルの顔|サル,動物,猿,顔\n1f412|サル|動物,猿\n1f98d|ゴリラ|動物,顔\n1f9a7|オランウータン|サル,動物,森の人,猿\n1f436|イヌの顔|イヌ,ペット,動物,子犬,犬,顔\n1f415|イヌ|ペット,動物,犬\n1f9ae|盲導犬|アクセシビリティ,犬,補助,補助犬,視覚,障がい\n1f415-200d-1f9ba|介助犬|アクセシビリティ,サービス,犬,補助\n1f429|プードル|ペット,動物,犬\n1f43a|オオカミの顔|オオカミ,動物,狼,顔\n1f98a|キツネの顔|キツネ,動物,狐,顔\n1f99d|アライグマ|ずる賢い,動物,好奇心,詮索好き\n1f431|ネコの顔|ネコ,ペット,動物,子猫,猫,顔\n1f408|ネコ|ペット,動物,猫\n1f408-200d-2b1b|黒猫|ネコ,不吉,動物,猫,黒\n1f981|ライオンの顔|しし座,ライオン,動物,星座,顔\n1f42f|トラの顔|トラ,動物,虎,顔\n1f405|トラ|タイガー,動物,肉食動物,虎\n1f406|ヒョウ|動物,肉食動物\n1f434|馬の顔|ウマ,動物,顔,馬\n1face|ヘラジカ|エルク,ムース,動物,哺乳類,枝角,鹿\n1facf|ロバ|ケッテイ,ラバ,動物,哺乳類,馬\n1f40e|馬|ウマ,ダービー,乗馬,動物,家畜,競走馬,競馬\n1f984|ユニコーンの顔|ユニコーン,一角獣,動物,顔\n1f993|シマウマ|しましま,ゼブラ,動物,縞\n1f98c|シカ|動物,顔,鹿\n1f9ac|バイソン|バッファロー,動物,牛,群れ,野牛\n1f42e|牛の顔|ウシ,動物,牛,顔\n1f402|牡牛|おうし座,ウシ,動物,星座,牛\n1f403|水牛|バッファロー,動物,牛\n1f404|牝牛|ウシ,乳牛,動物,家畜,牛\n1f437|ブタの顔|ブタ,動物,豚,顔\n1f416|ブタ|ポーク,動物,家畜,豚\n1f417|イノシシ|動物,猪,顔\n1f43d|ブタ鼻|ブタ,動物,豚,顔,鼻\n1f40f|牡羊|おひつじ座,ヒツジ,動物,星座,羊\n1f411|羊|ウール,ヒツジ,動物,家畜,羊毛\n1f410|山羊|やぎ座,ヤギ,動物,家畜,星座\n1f42a|ラクダ|コブ,ヒトコブラクダ,動物,砂漠\n1f42b|フタコブラクダ|コブ,フタコブ,ラクダ,動物,砂漠\n1f999|ラマ|アルパカ,ウール,グアナコ,ビクーナ,動物,羊毛\n1f992|キリン|動物\n1f418|ゾウ|動物,象\n1f9a3|マンモス|動物,巨大,牙,絶滅\n1f98f|サイ|動物,顔\n1f99b|カバ|動物\n1f42d|ネズミの顔|ねずみ,ネズミ,動物,顔\n1f401|ハツカネズミ|ねずみ,ネズミ,マウス,動物\n1f400|ネズミ|ねずみ,ラット,動物\n1f439|ハムスターの顔|ネズミ,ハムスター,ペット,動物,顔\n1f430|ウサギの顔|うさぎ,ウサギ,ペット,動物,顔\n1f407|ウサギ|うさぎ,ペット,動物\n1f43f-fe0f|リス|りす,シマリス,動物\n1f9ab|ビーバー|ダム作り,動物\n1f994|ハリネズミ|とげ,はりねずみ,ヤマアラシ,動物\n1f987|コウモリ|こうもり,バンパイア,動物,吸血鬼\n1f43b|クマの顔|くま,クマ,動物,熊,顔\n1f43b-200d-2744-fe0f|シロクマ|クマ,ホッキョクグマ,動物,北極,白\n1f428|コアラ|動物,顔\n1f43c|パンダの顔|パンダ,動物,顔\n1f9a5|ナマケモノ|のんびり,ものぐさ,動物\n1f9a6|カワウソ|ラッコ,動物,遊び好き,魚を食べる\n1f9a8|スカンク|動物,悪臭\n1f998|カンガルー|オーストラリア,ジャンプ,ジョーイ,動物,有袋類\n1f9a1|アナグマ|ミツアナグマ,ラーテル,動物\n1f43e|肉球|動物,犬,猫,足跡\n1f983|七面鳥|ターキー,動物,鳥\n1f414|にわとり|ニワトリ,動物,顔,鳥\n1f413|おんどり|にわとり,ニワトリ,動物,鳥\n1f423|卵からかえったひよこ|ひな,ひよこ,動物,卵,顔,鳥\n1f424|ひよこ|ひな,動物,横を向いているひよこ,顔,鳥\n1f425|前を向いているひよこ|ひな,ひよこ,動物,鳥\n1f426|鳥|動物,顔\n1f427|ペンギン|動物,顔,鳥\n1f54a-fe0f|ハト|動物,平和,鳥,鳩\n1f985|ワシ|イーグル,動物,鳥\n1f986|カモ|動物,鳥\n1f9a2|白鳥|ひな,みにくいアヒルの子,動物,鳥\n1f989|フクロウ|ミミズク,動物,鳥\n1f9a4|ドードー|モーリシャス島,絶滅,飛べない鳥,鳥\n1fab6|羽|羽根,羽毛,軽い,飛ぶ,鳥\n1f9a9|フラミンゴ|ピンク色,動物,派手,熱帯,鳥\n1f99a|クジャク|ピーコック,孔雀,派手,鳥\n1f99c|オウム|しゃべる,動物,海賊,鳥\n1fabd|翼|天使,天国,神話,空,羽,飛び立つ,飛ぶ,飛行,鳥\n1f426-200d-2b1b|黒い鳥|くちばし,カラス,カーカー,コクチョウ,ミヤマガラス,ワタリガラス,烏,鳥,鳥類,黒\n1fabf|ガチョウ|まぬけ,アヒル,ガーガー,鳥,鳥類\n1f438|カエルの顔|カエル,動物,顔\n1f40a|ワニ|クロコダイル,動物,爬虫類\n1f422|カメ|亀,動物,爬虫類\n1f98e|トカゲ|ヤモリ,動物,爬虫類\n1f40d|ヘビ|へびつかい座,動物,星座,毒,爬虫類\n1f432|ドラゴンの顔|ドラゴン,動物,竜,顔,龍\n1f409|ドラゴン|動物,竜,龍\n1f995|草食恐竜|ディプロドクス,ブラキオサウルス,ブロントサウルス,恐竜,竜脚類\n1f996|ティラノサウルス|恐竜\n1f433|潮吹きクジラ|クジラ,動物,潮吹き\n1f40b|クジラ|動物\n1f42c|イルカ|ドルフィン,動物\n1f9ad|アザラシ|アシカ,オットセイ,トド,動物,海獣\n1f41f|魚|うお座,フィッシング,動物,星座,釣り\n1f420|熱帯魚|動物,魚\n1f421|フグ|動物,魚\n1f988|サメ|動物,魚\n1f419|タコ|オクトパス,動物,軟体動物\n1f41a|巻き貝|動物,貝,貝殻\n1fab8|サンゴ|気候変動,海,珊瑚礁\n1fabc|クラゲ|プランクトン,刺す,毒,水族館,海,海洋生物,無脊椎動物,触手,針\n1f980|カニ|動物,星座\n1f99e|ザリガニ|はさみ,シーフード,ビスク,レッドロブスター,ロブスター,動物\n1f990|エビ|シュリンプ,シーフード,動物,小エビ\n1f991|イカ|シーフード,動物,軟体動物\n1f9aa|牡蠣|オイスター,カキ,シーフード,ダイビング,生ガキ,真珠,貝,魚介\n1f40c|かたつむり|でんでん虫,エスカルゴ,カタツムリ,虫\n1f98b|チョウ|バタフライ,昆虫,虫,蝶\n1f41b|毛虫|イモムシ,芋虫,虫\n1f41c|アリ|昆虫,虫\n1f41d|ミツバチ|ハチ,虫,蜂\n1fab2|カブトムシ|つの,昆虫,虫\n1f41e|テントウムシ|てんとう虫,虫\n1f997|バッタ|コオロギ,昆虫,直翅目,虫\n1fab3|ゴキブリ|害虫,虫\n1f577-fe0f|クモ|スパイダー,虫\n1f578-fe0f|クモの巣|ウェブ,クモ,スパイダー\n1f982|サソリ|さそり座,星座,虫\n1f99f|蚊|ウイルス,マラリア,刺す,熱,病気,虫\n1fab0|ハエ|不潔,害虫,病原菌,虫\n1fab1|ミミズ|寄生虫,虫\n1f9a0|微生物|アメーバ,ウイルス,バクテリア,科学,細菌\n1f490|花束|ブーケ,植物,花\n1f338|桜|サクラ,植物,花,開花\n1f4ae|大変よくできました|はなまる,よくできました,花\n1fab7|ハスの花|ヒンドゥー教,仏教,極楽,清浄,花\n1f3f5-fe0f|花飾り|植物,花\n1f339|バラ|ローズ,植物,花,薔薇,赤いバラ\n1f940|しおれた花|しおれた,花\n1f33a|ハイビスカス|植物,花\n1f33b|ヒマワリ|ひまわり,花\n1f33c|開花|キンポウゲ,咲いた花,植物,花\n1f337|チューリップ|植物,花,開花\n1fabb|ヒヤシンス|スミレ色,ブルーボネット,ライラック,ラベンダー,植物,紫色,花,青紫\n1f331|新芽|双葉,芽\n1fab4|鉢植え|ベランダ,植木鉢,植物,水やり,緑,苗,観葉植物\n1f332|常緑樹|木,森\n1f333|落葉樹|木,森\n1f334|ヤシの木|ビーチ,ヤシ,木,熱帯\n1f335|サボテン|植物,砂漠\n1f33e|稲|ススキ,稲穂,穀物,米,草\n1f33f|ハーブ|草,葉,薬草,香草\n2618-fe0f|クローバー|植物,草,葉\n1f340|四つ葉のクローバー|4,クローバー,植物,草,葉\n1f341|かえで|もみじ,カエデ,紅葉,落ち葉,葉\n1f342|落ち葉|木の葉,枯れ葉,葉,葉っぱ\n1f343|風に揺れる葉|木の葉,落ち葉,葉,葉っぱ,風\n1fab9|空っぽの巣|営巣,巣,巣作り\n1faba|鳥の卵と巣|卵,営巣,巣,巣作り,鳥の巣\n1f344|キノコ|きのこ,マッシュルーム,毒,菌類,野菜\n1f347|ぶどう|グレープ,ブドウ,果物\n1f348|メロン|マスクメロン,果物,野菜\n1f349|スイカ|果物,野菜\n1f34a|みかん|オレンジ,ネクタリン,ビタミンＣ,果物,柑橘類\n1f34b|レモン|果物,柑橘類,酸っぱい\n1f34c|バナナ|カリウム,果物\n1f34d|パイナップル|トロピカル,パイン,果物\n1f96d|マンゴー|トロピカル,フルーツ,果物,食べ物\n1f34e|赤リンゴ|りんご,アップル,果物\n1f34f|青リンゴ|りんご,アップル,果物\n1f350|洋ナシ|ナシ,果物,西洋ナシ\n1f351|桃|ピーチ,果物\n1f352|さくらんぼ|チェリー,果物\n1f353|いちご|ストロベリー,果物,苺\n1fad0|ブルーベリー|ビルベリー,ベリー,果物,食べ物\n1f95d|キウイフルーツ|キウイ,果物\n1f345|トマト|果物,野菜\n1fad2|オリーブ|実,果実,食べ物\n1f965|ココナツ|ココナッツ,ヤシの実,果物\n1f951|アボカド|果物,野菜\n1f346|ナス|野菜\n1f954|ジャガイモ|じゃがいも,イモ,ポテト,野菜\n1f955|人参|ニンジン,野菜\n1f33d|とうもろこし|コーン,トウモロコシ,野菜\n1f336-fe0f|とうがらし|辛い,野菜,香辛料\n1fad1|ピーマン|とうがらし,パプリカ,野菜,青ピーマン\n1f952|キュウリ|ピクルス,漬け物,野菜\n1f96c|葉野菜|キャベツ,ケール,サラダ,チンゲン菜,レタス\n1f966|ブロッコリー|野菜\n1f9c4|ニンニク|におい,ガーリック,薬味,野菜,香り\n1f9c5|タマネギ|ねぎ,玉ねぎ,薬味,野菜\n1f95c|ピーナッツ|ナッツ,落花生,野菜\n1fad8|豆|キドニービーンズ,ビーンズ,レッドキドニー,小豆,赤インゲン豆,金時豆,食べ物\n1f330|くり|栗,野菜\n1fada|ショウガ|ジンジャー,スパイス,ハーブ,生姜,薬味,薬草\n1fadb|エンドウ豆|さや,グリーンピース,大豆,枝豆,豆,野菜\n1f35e|食パン|パン,ベーカリー,小麦\n1f950|クロワッサン|パン,フランス,ベーカリー\n1f956|バゲット|パン,フランスパン,ベーカリー\n1fad3|フラットブレッド|アレパ,ナン,パン,ピタパン,ラバシ,食べ物\n1f968|プレッツェル|ねじり,パン\n1f96f|ベーグル|クリームチーズ,パン,パン屋,ベーカリー,朝食\n1f95e|パンケーキ|ホットケーキ\n1f9c7|ワッフル|ふんわり,朝食,焼き菓子\n1f9c0|チーズ|\n1f356|骨付き肉|もも肉,肉,骨\n1f357|鶏もも肉|もも肉,チキン,肉,骨,骨付き肉\n1f969|ステーキ肉|ステーキ,ビーフ,ポーク,ラム,肉,赤身肉\n1f953|ベーコン|肉\n1f354|ハンバーガー|バーガー,ファストフード\n1f35f|フライドポテト|ファストフード,フレンチフライ,ポテト,ポテトフライ\n1f355|ピザ|チーズ,ピッツァ,ペパロニ\n1f32d|ホットドッグ|ソーセージ,フランクフルト\n1f96a|サンドイッチ|パン\n1f32e|タコス|メキシカン,メキシコ料理\n1f32f|ブリトー|ソフトタコス,メキシカン,メキシコ料理,ラップサンド\n1fad4|タマル|ちまき,タマレス,パモーニャ,メキシカン,食べ物\n1f959|ケバブサンド|ケバブ,ピタパン,ラップサンド\n1f9c6|ファラフェル|コロッケ,ヒヨコマメ,肉団子\n1f95a|卵|\n1f373|料理|フライパン,レストラン,卵,朝食,目玉焼き\n1f958|パエリア|シーフード,パエリア鍋\n1f372|なべ|シチュー,スープ,煮物,煮込み\n1fad5|フォンデュ|スイス,チョコ,チーズ,チーズフォンデュ,溶かす,鍋,食べ物\n1f963|ボウルとスプーン|おかゆ,オートミール,シリアル,朝食,粥\n1f957|グリーンサラダ|グリーン,サラダ\n1f37f|ポップコーン|お菓子\n1f9c8|バター|乳製品\n1f9c2|塩|しょっぱい,振りかけ容器,薬味,調味料\n1f96b|缶詰|缶,非常食\n1f371|弁当|幕の内,弁当箱,駅弁\n1f358|せんべい|お菓子\n1f359|おにぎり|おむすび,和食,米\n1f35a|ごはん|ライス,米\n1f35b|カレーライス|カレー,ライス\n1f35c|ラーメン|どんぶり,スープ,ヌードル,熱々,箸,麺\n1f35d|スパゲッティ|イタリア料理,スパゲッティー,スパゲティ,パスタ,ミートソース\n1f360|焼き芋|サツマイモ,芋\n1f362|おでん|串,練り物\n1f363|すし|お寿司,寿司\n1f364|エビフライ|エビ,エビ天,フライ,天ぷら\n1f365|なると|渦巻き,練り物\n1f96e|月餅|お祝い,中秋節,中華菓子,秋\n1f361|だんご|お団子,デザート,串,和菓子\n1f95f|点心|ぎょうざ,ギョーザ,肉まん,餃子\n1f960|フォーチュンクッキー|おみくじ\n1f961|テイクアウト弁当|デリバリー,中華,弁当,持ち帰り,箸\n1f366|ソフトクリーム|アイス,スイーツ,ソフト,デザート\n1f367|かき氷|アイス,シェイブアイス,スイーツ,デザート,氷\n1f368|アイスクリーム|アイス,スイーツ,デザート\n1f369|ドーナツ|お菓子,スイーツ,デザート\n1f36a|クッキー|お菓子,スイーツ,チョコレートチップ,デザート\n1f382|バースデーケーキ|お祝い,お菓子,ケーキ,スイーツ,ハッピーバースデー,バースデー,誕生日\n1f370|ショートケーキ|お菓子,ケーキ,スイーツ,デザート\n1f9c1|カップケーキ|おやつ,お菓子,ケーキ,スイーツ,ベーカリー,砂糖\n1f967|パイ|お菓子,アップルパイ,タルト,パンプキンパイ,ミートパイ\n1f36b|チョコレート|お菓子,スイーツ,チョコ,デザート,板チョコ\n1f36c|キャンディ|あめ,お菓子,虫歯\n1f36d|ぺろぺろキャンディ|あめ,お菓子,キャンディ,棒付きキャンディ\n1f36e|プリン|お菓子,カスタード,スイーツ,デザート\n1f36f|はちみつ|ハチミツ,ハニー,プーさん,壺,甘い\n1f37c|ほにゅう瓶|ミルク,哺乳瓶,新生児,赤ちゃん\n1f95b|牛乳入りのコップ|グラス,コップ,ミルク,牛乳\n2615|温かい飲み物|カフェ,カフェイン,コーヒー,ホットドリンク,紅茶,飲み物\n1fad6|ティーポット|お茶,急須,茶器,飲み物\n1f375|湯飲み|お茶,緑茶,茶碗,飲み物\n1f376|徳利|日本酒,猪口,酒\n1f37e|シャンパン|コルク,シャンペン,スパークリングワイン,スプマンテ,バー,ボトル,泡,飲み物\n1f377|ワイングラス|お酒,アルコール,グラス,バー,ワイン\n1f378|カクテルグラス|お酒,アルコール,カクテル,クラブ,グラス,バー,マティーニ\n1f379|トロピカルドリンク|お酒,アルコール,カクテル,トロピカル,バー,マイタイ\n1f37a|ビールジョッキ|お酒,アルコール,オクトーバーフェスト,ジョッキ,バー,ビール,居酒屋\n1f37b|ビールで乾杯|アルコール,ジョッキ,バー,ビール,乾杯,宴会\n1f942|グラスで乾杯|グラス,シャンパン,シャンペン,スパークリングワイン,スプマンテ,乾杯,祝杯\n1f943|タンブラーグラス|ウィスキー,ウイスキー,グラス,ショット,スコッチ,タンブラー\n1fad7|コップから注ぐ|こぼす,ガラス,水,液体,飲み物\n1f964|ストローカップ|コップ,ジュース,ソフトドリンク,ソーダ,水\n1f9cb|タピオカドリンク|お茶,タピオカ,ドリンク,バブルティー,ミルクティー,飲み物\n1f9c3|紙パック飲料|ジュース,ストロー,ドリンク,飲み物\n1f9c9|マテ茶|お茶,ドリンク,飲み物\n1f9ca|角氷|冷たい,氷,氷山\n1f962|はし|おはし,箸\n1f37d-fe0f|ナイフとフォークと皿|お皿,ディナー,ナイフ,フォーク,皿,食器\n1f374|ナイフとフォーク|ごちそう,カトラリー,ディナー,ナイフ,フォーク,レストラン,朝食,食事,食器\n1f944|スプーン|カトラリー,食器\n1f52a|包丁|ナイフ,凶器,料理,調理器具\n1fad9|瓶|びん,ジャー,保存,容器,空,空き瓶,調味料\n1f3fa|壺|かめ,星座,水瓶\n1f30d|地球（ヨーロッパとアフリカ）|アフリカ,ヨーロッパ,世界,地球\n1f30e|地球（アメリカ大陸）|アメリカ,アメリカ大陸,世界,地球\n1f30f|地球（アジアとオーストラリア）|アジア,オーストラリア,世界,地球\n1f310|子午線のある地球|インターネット,地球,子午線\n1f5fa-fe0f|世界地図|マップ,世界,地図\n1f5fe|日本地図|地図,日本\n1f9ed|コンパス|オリエンテーリング,方位磁針,方角,磁石,航海,航空\n1f3d4-fe0f|雪山|冠雪,山,雪\n26f0-fe0f|山|山岳\n1f30b|火山|噴火,山,溶岩\n1f5fb|富士山|山\n1f3d5-fe0f|キャンプ|テント,山\n1f3d6-fe0f|ビーチパラソル|パラソル,ビーチ,砂浜\n1f3dc-fe0f|砂漠|サボテン,サボテンのある砂漠\n1f3dd-fe0f|無人島|ヤシ,ヤシの木のある島,島\n1f3de-fe0f|国立公園|公園,自然\n1f3df-fe0f|競技場|スタジアム,野球場\n1f3db-fe0f|歴史的な建物|古代,史跡,歴史,歴史的建造物\n1f3d7-fe0f|建設中|クレーン,工事,建築,建設\n1f9f1|れんが|しっくい,ブロック,モルタル,壁,煉瓦,粘土\n1faa8|岩石|岩,巨岩,石,石材,硬い,重たい\n1fab5|丸太|ログ,切り株,木,木材,材木,樹木\n1f6d6|わらぶき小屋|バンガロー,ユルト,家,小屋\n1f3d8-fe0f|住宅街|家,街,複数の家\n1f3da-fe0f|廃屋|家,建物,空き家\n1f3e0|家|マイホーム,一戸建て,建物,郊外\n1f3e1|庭付きの家|マイホーム,一戸建て,家,庭,建物,郊外\n1f3e2|オフィスビル|会社,建物,社屋,都会\n1f3e3|郵便局|建物,郵便\n1f3e4|西洋の郵便局|建物,郵便\n1f3e5|病院|医者,建物,薬\n1f3e6|銀行|建物\n1f3e8|ホテル|建物\n1f3e9|ラブホテル|ホテル,ラブホ,建物\n1f3ea|コンビニ|24時間営業,コンビニエンスストア,店,建物\n1f3eb|学校|建物,校舎\n1f3ec|デパート|ビル,店舗,建物,百貨店\n1f3ed|工場|ファクトリー,建物,煙突\n1f3ef|城|建物,日本,日本の城\n1f3f0|西洋の城|キャッスル,城,建物\n1f492|結婚式|チャペル,ロマンス,建物,式場,教会,礼拝堂,結婚\n1f5fc|東京タワー|タワー,塔,東京\n1f5fd|自由の女神|アメリカ,ニューヨーク,彫像\n26ea|教会|キリスト教,チャペル,十字架,宗教,建物,礼拝堂\n1f54c|モスク|イスラム教,宗教,建物\n1f6d5|ヒンドゥー教の寺院|ヒンズー教,宗教,寺,建物\n1f54d|シナゴーグ|ユダヤ教,宗教,建物\n26e9-fe0f|鳥居|宗教,建物,神社,神道\n1f54b|カーバ|イスラム教,メッカ,宗教,巡礼,建物,聖地\n26f2|噴水|\n26fa|テント|キャンプ\n1f301|霧の都会|もや,都会,霧\n1f303|夜の都会|夜,夜景,星,星空\n1f3d9-fe0f|高層ビル|ビル群,都会,都市\n1f304|山から日の出|ご来光,太陽,日の出,朝,朝日\n1f305|日の出|太陽,日光,朝,朝日\n1f306|夕暮れの都会|ビル,夕方,夕日,夕暮れ,都会,都市\n1f307|夕日|ビル,夕方,夕暮れ,太陽,日暮れ,日没\n1f309|夜の橋|夜,夜景,橋\n2668-fe0f|温泉マーク|温泉,湯気\n1f3a0|メリーゴーランド|メリーゴーラウンド,回転木馬,遊園地,馬\n1f6dd|すべり台|公園,遊具\n1f3a1|観覧車|アミューズメントパーク,遊園地\n1f3a2|ジェットコースター|アミューズメントパーク,遊園地\n1f488|床屋|バーバー,ヘアサロン,理容室,理容院,理髪店,美容室,美容院\n1f3aa|サーカス|サーカス小屋,テント\n1f682|蒸気機関車|SL,乗り物,列車,機関車,汽車,鉄道\n1f683|電車|トロリーバス,乗り物,列車,鉄道\n1f684|新幹線|乗り物,鉄道,電車,高速列車\n1f685|0系新幹線|0系,丸い新幹線,乗り物,新幹線,鉄道,電車,高速列車\n1f686|電車正面|乗り物,列車,電車\n1f687|地下鉄|メトロ,乗り物,電車\n1f688|ライトレール|モノレール,乗り物,鉄道,電車\n1f689|駅|ステーション,乗り物,列車,電車\n1f68a|路面電車正面|乗り物,路面電車,電車\n1f69d|モノレール|乗り物,電車\n1f69e|登山鉄道|乗り物,登山電車,電車\n1f68b|路面電車|トロリーバス,乗り物,電車\n1f68c|バス|スクールバス,乗り物,車\n1f68d|バス正面|バス,乗り物,車\n1f68e|トロリーバス|バス,乗り物,路面電車\n1f690|マイクロバス|バス,ミニバス,乗り物,小型バス,車\n1f691|救急車|乗り物,車\n1f692|消防車|乗り物,車\n1f693|パトカー|パトロール,乗り物,警察\n1f694|パトカー正面|パトカー,乗り物,警察\n1f695|タクシー|イエローキャブ,乗り物,車\n1f696|タクシー正面|イエローキャブ,タクシー,乗り物,車\n1f697|自動車|ドライブ,乗り物,乗用車,車\n1f698|自動車正面|ドライブ,乗り物,乗用車,自動車,車\n1f699|アールブイ車|RV車,SUV車,乗り物,乗用車,自動車,車\n1f6fb|軽トラック|トラック,ピックアップトラック,乗り物,自動車,車,配達\n1f69a|トラック|乗り物,車,配送,配達\n1f69b|トレーラー|トラック,乗り物,車\n1f69c|トラクター|乗り物,車\n1f3ce-fe0f|レーシングカー|F1,カーレース,スポーツ,モータースポーツ,レース,乗り物,車\n1f3cd-fe0f|オートバイ|オートレース,スポーツ,バイク,モータースポーツ,乗り物\n1f6f5|スクーター|オートバイ,バイク,原付\n1f9bd|手動式車椅子|アクセシビリティ,椅子,車椅子\n1f9bc|電動車椅子|アクセシビリティ,椅子,車椅子\n1f6fa|三輪タクシー|オートリクシャー,タクシー,トゥクトゥク,リクシャー\n1f6b2|自転車|サイクリング,乗り物\n1f6f4|キックボード|キックスクーター,キックスケーター\n1f6f9|スケートボード|スケボー,ボード\n1f6fc|ローラースケート|スケート,スポーツ\n1f68f|バス停|バス乗り場,乗り物,停留所\n1f6e3-fe0f|高速道路|ハイウェイ,道路,高速\n1f6e4-fe0f|線路|軌道,鉄道\n1f6e2-fe0f|ドラム缶|オイル,石油\n26fd|ガソリンスタンド|ガソリン,ガソリンノズル,給油\n1f6de|ホイール|スポーク,タイヤ,自動車,車,車輪\n1f6a8|パトランプ|サイレン,パトカー,緊急,警察,赤色灯\n1f6a5|信号横|交差点,交通,信号,信号機\n1f6a6|信号縦|交差点,交通,信号,信号機\n1f6d1|止まれの標識|ストップ,八角形,標識,止まれ\n1f6a7|工事中|サイン,通行止め\n2693|錨|いかり,碇,船\n1f6df|救命浮環|ブイ,ライフセーバー,レスキュー,安全,救助,救命具,浮き輪\n26f5|ヨット|セーリング,乗り物,帆船,船\n1f6f6|カヌー|カヤック,ボート,乗り物,船\n1f6a4|スピードボート|ボート,モーターボート,乗り物,快速艇,船\n1f6f3-fe0f|客船|乗り物,旅客船,船\n26f4-fe0f|フェリー|乗り物,客船,船\n1f6e5-fe0f|モーターボート|ボート,乗り物,船\n1f6a2|船|タイタニック号,乗り物,客船\n2708-fe0f|飛行機|ジェット機,乗り物,旅行,航空機\n1f6e9-fe0f|小型飛行機|乗り物,小型機,航空機,飛行機\n1f6eb|飛行機離陸|乗り物,航空機,離陸,飛行機\n1f6ec|飛行機着陸|乗り物,着陸,航空機,飛行機\n1fa82|パラシュート|スカイダイビング,ハンググライダー,パラグライダー,パラセーリング\n1f4ba|座席|シート,席,椅子\n1f681|ヘリコプター|ヘリ,乗り物\n1f69f|懸垂式モノレール|モノレール,乗り物,電車\n1f6a0|ケーブルカー|ゴンドラ,リフト,乗り物\n1f6a1|ロープウェイ|ゴンドラ,乗り物\n1f6f0-fe0f|人工衛星|宇宙\n1f680|ロケット|乗り物,宇宙,宇宙旅行,発射\n1f6f8|空飛ぶ円盤|UFO,乗り物,宇宙,宇宙人,未確認飛行物体\n1f6ce-fe0f|ベルボーイベル|ベル,ホテル\n1f9f3|スーツケース|キャリーケース,パッキング,旅行,旅行かばん\n231b|砂時計|タイマー,時計,砂\n23f3|砂が落ちている砂時計|タイマー,時計,時間,砂,砂時計\n231a|腕時計|ウォッチ,時計,時間\n23f0|目覚まし時計|アラーム,時計,時間,目覚まし\n23f1-fe0f|ストップウォッチ|タイム,時計\n23f2-fe0f|タイマー|時計\n1f570-fe0f|置時計|マンテルクロック,時計,時間,置き時計\n1f55b|12時|12:00,時計,正午,零時\n1f567|12時半|12:30,12時30分,時計\n1f550|1時|1:00,時計\n1f55c|1時半|1:30,1時30分,時計\n1f551|2時|2:00,時計\n1f55d|2時半|2:30,2時30分,時計\n1f552|3時|3:00,時計\n1f55e|3時半|3:30,3時30分,時計\n1f553|4時|4:00,時計\n1f55f|4時半|4:30,4時30分,時計\n1f554|5時|5:00,時計\n1f560|5時半|5:30,5時30分,時計\n1f555|6時|6:00,時計\n1f561|6時半|6:30,6時30分,時計\n1f556|7時|7:00,時計\n1f562|7時半|7:30,7時30分,時計\n1f557|8時|8:00,時計\n1f563|8時半|8:30,8時30分,時計\n1f558|9時|9:00,時計\n1f564|9時半|9:30,9時30分,時計\n1f559|10時|10:00,時計\n1f565|10時半|10:30,10時30分,時計\n1f55a|11時|11:00,時計\n1f566|11時半|11:30,11時30分,時計\n1f311|新月|宇宙,月,闇\n1f312|初月|三日月,宇宙,月\n1f313|上弦の月|上弦,半月,宇宙,月\n1f314|十三夜月|十日夜の月,宇宙,月\n1f315|満月|宇宙,月\n1f316|寝待月|宇宙,居待月,月\n1f317|下弦の月|下弦,半月,宇宙,月\n1f318|有明月|三日月,宇宙,月\n1f319|三日月|宇宙,月\n1f31a|顔のある新月|新月,月,顔\n1f31b|顔のある上弦の月|上弦の月,半月,月,顔\n1f31c|顔のある下弦の月|下弦の月,半月,月,顔\n1f321-fe0f|温度計|天気,寒暖計,気温,温度\n2600-fe0f|太陽|天気,日光,晴れ\n1f31d|顔のある満月|月,満月,顔\n1f31e|顔のある太陽|太陽,顔\n1fa90|環のある惑星|リング,土星,天体,惑星,星\n2b50|スター|天文学,星\n1f31f|きらきら星|きらきら,キラキラ,スター,星,輝き\n1f320|流れ星|スター,夜,宇宙,星\n1f30c|天の川|ミルキーウェイ,夜空,宇宙,星空,銀河\n2601-fe0f|雲|天気,曇り\n26c5|曇り時々晴れ|天気,太陽,曇り,雲\n26c8-fe0f|雷雨|天気,稲妻,雨,雲,雷,雷雲\n1f324-fe0f|晴れ時々曇り|天気,太陽,晴れ,雲\n1f325-fe0f|曇り一時晴れ|天気,太陽,曇り,雲\n1f326-fe0f|雨時々晴れ|天気,天気雨,太陽,曇り,雲\n1f327-fe0f|雨雲|天気,雨,雲\n1f328-fe0f|雪雲|天気,雪,雲\n1f329-fe0f|雷雲|天気,稲妻,雲,雷\n1f32a-fe0f|竜巻|トルネード,天気,突風\n1f32b-fe0f|霧|天気,曇り,雲\n1f32c-fe0f|顔のある風|雲,顔,風\n1f300|渦巻き|めまい,もやもや,サイクロン,ハリケーン,台風,天気\n1f308|虹|GLBT,GLBTQ,LGBT,LGBTQ,ゲイ,トランスジェンダー,バイセクシュアル,レインボー,レズビアン,天気\n1f302|閉じた傘|傘,天気,持ち物,雨\n2602-fe0f|傘|天気,持ち物,雨\n2614|傘と雨|傘,天気,持ち物,雨,雨粒\n26f1-fe0f|パラソル|ビーチ,傘,日傘,砂浜,雨\n26a1|高電圧|危険,稲妻,雷,電気\n2744-fe0f|雪の結晶|天気,結晶,雪\n2603-fe0f|雪だるまと雪|雪,雪だるま\n26c4|雪だるま|雪\n2604-fe0f|彗星|すい星,宇宙\n1f525|火|ファイアー,ファイヤー,炎,熱い,燃える\n1f4a7|水滴|しずく,たらーっ,水,汗,涙\n1f30a|波|天気,波浪,海,自然\n1f383|ハロウィンかぼちゃ|かぼちゃ,ハロウィン,ハロウィーン\n1f384|クリスマスツリー|クリスマス,クリスマスイブ,ツリー\n1f386|打ち上げ花火|お祭り,どーん,花火,花火大会\n1f387|線香花火|お祭り,火花,花火\n1f9e8|爆竹|ダイナマイト,火花,火薬,爆発,爆発物,爆薬,花火\n2728|きらきら|ぴかぴか,キラキラ,スター,星\n1f388|風船|バルーン\n1f389|クラッカー|お祝い,パーティー,パーティークラッカー,誕生日\n1f38a|くす玉|お祝い,パーティー,紙吹雪\n1f38b|七夕|和,日本,短冊,笹飾り\n1f38d|門松|お祝い,和,日本,正月,竹\n1f38e|ひな祭り|おだいり様,おひな様,お祝い,ひな人形,人形,和,日本\n1f38f|こいのぼり|お祝い,子供の日\n1f390|風鈴|夏,鈴,風\n1f391|月見|ススキ,十五夜,団子,月\n1f9e7|赤い封筒|お年玉,お金,ご祝儀,幸運,紅包\n1f380|リボン|お祝い\n1f381|プレゼント|お祝い,ギフト,リボン,箱\n1f397-fe0f|リマインダーリボン|お祝い,リボン,リマインダー\n1f39f-fe0f|入場券|チケット,入場パス,半券\n1f3ab|チケット|入場券,切符,半券\n1f396-fe0f|勲章|お祝い,メダル,表彰\n1f3c6|トロフィー|チャンピオン,優勝,優勝カップ,表彰,賞杯\n1f3c5|メダル|スポーツ,優勝,表彰,金,金メダル\n1f947|金メダル|1位,ゴールド,メダル,優勝,金\n1f948|銀メダル|2位,シルバー,メダル,銀\n1f949|銅メダル|3位,ブロンズ,メダル,銅\n26bd|サッカー|サッカーボール,スポーツ,ボール\n26be|野球|スポーツ,ボール\n1f94e|ソフトボール|スポーツ,ボール,下手投げ\n1f3c0|バスケットボール|スポーツ,バスケ,ボール\n1f3d0|バレーボール|スポーツ,バレー,ボール\n1f3c8|アメフト|アメリカンフットボール,スポーツ,フットボール,ボール\n1f3c9|ラグビー|スポーツ,ボール,ラグビーボール\n1f3be|テニス|スポーツ,テニスボール,ボール,ラケット\n1f94f|フリスビー|アルティメット,フライングディスク,円盤\n1f3b3|ボウリング|ストライク,スポーツ,ボール,球\n1f3cf|クリケット|スポーツ,バット,ボール\n1f3d1|ホッケー|スティック,スポーツ,フィールドホッケー,ボール\n1f3d2|アイスホッケー|スティック,スポーツ,パック,ホッケー\n1f94d|ラクロス|ゴール,スティック,スポーツ,ボール\n1f3d3|卓球|スポーツ,ピンポン,ボール,ラケット\n1f3f8|バドミントン|シャトル,スポーツ,ラケット\n1f94a|ボクシング|グローブ,スポーツ,ボクシンググローブ\n1f94b|武道|スポーツ,テコンドー,柔道,格闘技,空手,道着\n1f945|ゴールネット|ゴール,スポーツ,ネット\n26f3|ゴルフ|スポーツ,フラグ,フラッグ,ホール,旗\n26f8-fe0f|アイススケート|スケート,スポーツ,フィギュアスケート\n1f3a3|釣り|スポーツ,フィッシング,釣り竿,魚\n1f93f|ダイビング マスク|シュノーケリング,スキューバ,スポーツ,ダイビング,マスク\n1f3bd|長距離走|たすき,スポーツ,ランニング,ランニングシャツ,駅伝\n1f3bf|スキー|ストック,スポーツ,板,雪\n1f6f7|そり競技|そり,スケルトン,スポーツ,トボガン,ボブスレー,リュージュ\n1f94c|カーリング|ゲーム,ストーン,スポーツ,試合\n1f3af|的|スポーツ,ダーツ,ブルズアイ,当たり,的中\n1fa80|ヨーヨー|おもちゃ,上下,回転,玩具\n1fa81|たこ|おもちゃ,カイト,凧揚げ,玩具\n1f52b|水鉄砲|ピストル,リボルバー,拳銃,武器,銃\n1f3b1|ビリヤード|エイトボール,スポーツ,ボール,玉突き\n1f52e|水晶玉|クリスタル,占い,水晶,水晶球,玉,運命,魔法\n1fa84|魔法の杖|つえ,マジック,手品,杖,魔法,魔術,魔術師\n1f3ae|テレビゲーム|ゲーム,コントローラ,ビデオゲーム\n1f579-fe0f|ジョイスティック|ゲーム,コントローラ,スティック,テレビゲーム,ビデオゲーム\n1f3b0|スロットマシン|カジノ,ギャンブル,ゲーム,スリーセブン,スロット\n1f3b2|サイコロ|ゲーム,ダイス\n1f9e9|ジグソーパズル|パズル,ピース,組み合わせ,鍵\n1f9f8|テディベア|おもちゃ,くま,ぬいぐるみ,玩具\n1fa85|ピニャータ|お祝い,パーティー,メキシコ,人形,誕生日\n1faa9|ミラーボール|キラキラ,ダンス,ディスコ,パーティー\n1fa86|マトリョーシカ|ロシア,人形,入れ子\n2660-fe0f|スペード|カード,トランプ\n2665-fe0f|ハート|カード,トランプ\n2666-fe0f|ダイヤ|カード,ダイア,トランプ\n2663-fe0f|クラブ|カード,クローバー,トランプ\n265f-fe0f|チェスの駒|チェス,捨て駒,駒\n1f0cf|ジョーカー|カード,ジジ,トランプ,ババ\n1f004|麻雀|ゲーム,中,牌,麻雀牌\n1f3b4|花札|カード,ゲーム\n1f3ad|舞台芸術|仮面,俳優,劇場,女優,役者,演劇,演芸,芸術\n1f5bc-fe0f|絵画|アート,絵,美術館,芸術,額\n1f3a8|絵の具パレット|パレット,画家,絵,絵画,美術館,芸術\n1f9f5|糸|ひも,ソーイング,糸巻き,縫い針,裁縫\n1faa1|縫い針|ステッチ,刺繍,糸,縫う,裁縫,針\n1f9f6|毛糸|かぎ針,ニット,毛糸玉,編み物\n1faa2|結び目|ねじれ,ひも,ノット,ロープ,綱\n1f453|メガネ|眼鏡\n1f576-fe0f|サングラス|メガネ,眼鏡\n1f97d|ゴーグル|スキューバ,ダイビング,保護メガネ,水泳,溶接\n1f97c|白衣|上着,医者,実験,服,科学者\n1f9ba|安全ベスト|チョッキ,ベスト,反射,安全,工事,緊急\n1f454|ネクタイ|シャツ,ワイシャツ,会社員,服\n1f455|Tシャツ|シャツ,服\n1f456|ジーンズ|カジュアル,ズボン,デニム,パンツ,ブルージーンズ,服\n1f9e3|マフラー|スカーフ,厚着,寒い,襟巻き,首巻き\n1f9e4|手袋|手\n1f9e5|コート|アウター,オーバー,ジャケット,厚着,寒い,服\n1f9e6|ソックス|靴下\n1f457|ワンピース|ドレス,服\n1f458|着物|和服,服\n1f97b|サリー|ドレス,服,民族衣装\n1fa71|ワンピースの水着|スイムウェア,水着\n1fa72|ブリーフ|スイムウェア,パンツ,下着,水着\n1fa73|ショーツ|スイムウェア,パンツ,下着,水着\n1f459|ビキニ|ビーチ,プール,水着\n1f45a|婦人服|シャツ,ブラウス,服\n1faad|扇子|あおぐ,パタパタ,団扇,夏,扇,涼む,風\n1f45b|がま口|小銭入れ,財布\n1f45c|ハンドバッグ|かばん,ショッピング,バッグ\n1f45d|ポーチ|クラッチバッグ,ハンドバッグ,バッグ\n1f6cd-fe0f|紙袋|ショッピングバッグ,バッグ,紙手提げ\n1f392|バックパック|ランドセル,リュックサック,学校,小学校,小学生\n1fa74|ビーチサンダル|ゴムぞうり,サンダル,トングサンダル,ビーサン,靴\n1f45e|紳士靴|ローファー,革靴,靴\n1f45f|スニーカー|ジョギングシューズ,テニスシューズ,靴\n1f97e|ハイキングシューズ|アウトドア,キャンプ,ハイキング,ブーツ,登山靴,茶色い靴,靴\n1f97f|フラットシューズ|ぺたんこ靴,スリッポン,バレエシューズ\n1f460|ハイヒール|ピンヒール,婦人靴,靴\n1f461|サンダル|婦人靴,靴\n1fa70|トウシューズ|シューズ,ダンス,バレエ,バレエシューズ,靴\n1f462|ブーツ|ロングブーツ,婦人靴,靴\n1faae|アフロコーム|くし,アフロ,コーム,髪\n1f451|王冠|クラウン,冠,王族\n1f452|婦人帽子|帽子,麦わら,麦わら帽子\n1f3a9|シルクハット|山高帽,帽子\n1f393|角帽|卒業,学者,帽子\n1f9e2|キャップ|帽子,野球帽\n1fa96|軍用ヘルメット|ヘルメット,ミリタリー,兵士,戦闘,軍隊\n26d1-fe0f|白十字ヘルメット|ヘルメット,帽子,救助隊,救急,白十字\n1f4ff|数珠|ネックレス,ロザリオ,宗教,念珠,祈る\n1f484|口紅|コスメ,メーク,リップ,リップスティック,化粧,化粧品\n1f48d|指輪|ジュエリー,ダイア,ダイヤ,ダイヤモンド,リング,婚約指輪\n1f48e|宝石|ジュエリー,ダイア,ダイヤ,ダイヤモンド\n1f507|スピーカー消音|スピーカー,ミュート,消音,無音,音無し\n1f508|スピーカー|ボリューム,音量\n1f509|スピーカー音量小|スピーカー,ボリューム,音量,音量小\n1f50a|スピーカー音量大|スピーカー,ボリューム,大音量,音量,音量大\n1f4e2|拡声器|スピーカー,メガホン,放送\n1f4e3|メガホン|スピーカー,応援,拡声器\n1f4ef|郵便ラッパ|ラッパ,郵便\n1f514|ベル|教会,鈴,鐘\n1f515|ベル消音|ミュート,消音,鈴,鐘,音無し\n1f3bc|楽譜|スコア,ト音記号,五線譜,音楽\n1f3b5|音符|8分音符,連符,音楽\n1f3b6|複数の音符|8分音符,音楽,音符\n1f399-fe0f|スタジオマイク|マイク,音楽\n1f39a-fe0f|レベルスライダー|スライダー,レベル,音楽\n1f39b-fe0f|コントロールつまみ|つまみ,コントロール,ノブ,調整,音楽\n1f3a4|マイク|カラオケ,歌,音楽\n1f3a7|ヘッドホン|イヤホン,ヘッドフォン,音楽\n1f4fb|ラジオ|受信機,放送,音楽\n1f3b7|サックス|サキソフォン,サクソフォン,楽器,音楽\n1f3ba|トランペット|ラッパ,楽器,音楽\n1fa97|アコーディオン|じゃばら,楽器,音楽\n1f3b8|ギター|エレキギター,楽器,音楽\n1f3b9|鍵盤|キーボード,ピアノ,楽器,音楽\n1f3bb|バイオリン|ストラディバリウス,ヴィオラ,楽器,音楽\n1fa95|バンジョー|弦楽器,楽器,音楽\n1f941|ドラム|ドラムスティック,太鼓,楽器,音楽\n1fa98|コンガ|ドラム,ビート,リズム,太鼓,楽器,音楽\n1fa87|マラカス|シェイカー,ダンス,パーティー,ラトル,リズム,打楽器,振る,楽器,音楽\n1fa88|笛|オーケストラ,バンド,ピッコロ,フルート,フルート奏者,リコーダー,楽器,横笛,管楽器,音楽\n1f4f1|携帯電話|スマホ,スマートフォン,モバイル,携帯\n1f4f2|着信中|スマホ,スマートフォン,モバイル,受信,携帯受信,携帯電話,電話\n260e-fe0f|固定電話|ボタン式電話,親機,電話,黒電話\n1f4de|受話器|子機,電話\n1f4df|ポケベル|ページャー,ポケットベル\n1f4e0|ファックス|FAX,複合機,電話\n1f50b|電池|バッテリー,乾電池\n1faab|バッテリー残量低下|バッテリー,充電不足,電池切れ寸前,電池残量低下\n1f50c|コンセント|プラグ,電気,電源\n1f4bb|ノートパソコン|PC,コンピューター,パソコン,ラップトップ\n1f5a5-fe0f|デスクトップパソコン|PC,コンピューター,デスクトップ,パソコン,モニター\n1f5a8-fe0f|プリンタ|コピー機,コンピューター,プリンター,印刷機,複合機\n2328-fe0f|キーボード|PC,コンピューター,パソコン\n1f5b1-fe0f|マウス|PC,コンピューター,パソコン\n1f5b2-fe0f|トラックボール|PC,コンピューター,パソコン\n1f4bd|MD|MO,コンピューター,ミニディスク\n1f4be|フロッピー|FD,コンピューター,ディスク,フロッピーディスク\n1f4bf|CD|Blu-ray,DVD,コンピューター,ディスク,ブルーレイ,光ディスク\n1f4c0|DVD|Blu-ray,CD,ディスク,ブルーレイ\n1f9ee|そろばん|アバカス,算盤,計算\n1f3a5|映画カメラ|カメラ,シネマ,ハリウッド,フィルム,ムービー,撮影,映画\n1f39e-fe0f|映画フィルム|シネマ,フィルム,フレーム,ムービー,映画\n1f4fd-fe0f|映写機|ビデオ,フィルム,プロジェクター,ムービー,映画\n1f3ac|カチンコ|映画\n1f4fa|テレビ|TV,ビデオ\n1f4f7|カメラ|写真\n1f4f8|フラッシュを焚いているカメラ|カメラ,カメラフラッシュ,フラッシュ,写真\n1f4f9|ビデオカメラ|カメラ,ビデオ,ムービー,動画,録画\n1f4fc|ビデオテープ|VHS,テープ,ビデオ,ビデオカセット,動画\n1f50d|虫眼鏡左|ルーペ,拡大鏡,検索,科学,虫めがね\n1f50e|虫眼鏡右|ルーペ,拡大鏡,検索,科学,虫めがね\n1f56f-fe0f|ろうそく|キャンドル,ロウソク,明かり\n1f4a1|電球|ひらめき,ぴこーん,マンガ,明かり\n1f526|懐中電灯|ライト,明かり\n1f3ee|赤ちょうちん|ちょうちん,居酒屋,飲み屋\n1fa94|ディヤランプ|オイル,ランプ,明かり\n1f4d4|表紙付きノート|ノート,学校,文具,文房具,本\n1f4d5|閉じた本|書籍,本,赤い本\n1f4d6|開いた本|図書館,小説,書籍,本,知識,読書\n1f4d7|緑の本|図書館,書籍,本,読書\n1f4d8|青の本|図書館,書籍,本,読書,青い本\n1f4d9|オレンジの本|図書館,書籍,本,読書\n1f4da|本の山|勉強,学校,小説,書籍,本,読書\n1f4d3|ノート|手帳,文具,文房具\n1f4d2|リングノート|ノート,台帳,文具,文房具\n1f4c3|巻きページ|カール,ドキュメント,文書,書類\n1f4dc|巻き物|文書,書類,紙\n1f4c4|ページ|ドキュメント,文書,書類\n1f4f0|新聞|ニュース,新聞紙\n1f5de-fe0f|丸めた新聞|ニュース,新聞,新聞紙\n1f4d1|ページに付箋|ふせん,付箋,文具,文房具\n1f516|しおり|タグ,ブックマーク,付箋\n1f3f7-fe0f|荷札|タグ,ラベル\n1fa99|コイン|お金,小銭,硬貨,金貨,銀貨\n1f4b0|ドル袋|お金,キャッシュ,ドル,現金,賞金,賭け金,金持ち,金袋,銀行\n1f4b4|円札|お札,お金,円,札束,紙幣,通貨\n1f4b5|ドル札|お札,お金,ドル,札束,紙幣,通貨\n1f4b6|ユーロ札|お札,お金,ユーロ,札束,紙幣,通貨\n1f4b7|ポンド札|お札,お金,ポンド,札束,現金,紙幣,通貨\n1f4b8|羽が生えたお金|お札,お金,ドル,支払い,札束,紙幣\n1f4b3|クレジットカード|お金,カード,キャッシュカード,支払い,銀行\n1f9fe|レシート|会計,簿記,請求書,領収書\n1f4b9|為替|グラフ,チャート,円,円高,市場,株,株価\n2709-fe0f|封筒|Eメール,メール,手紙,郵便,電子メール\n1f4e7|Eメール|メール,封筒,手紙,郵便,電子メール\n1f4e8|メール受信中|Eメール,受信中,受信箱,封筒,手紙,電子メール\n1f4e9|メール受信|Eメール,メール送信,受信,封筒と矢印,送信,電子メール\n1f4e4|送信トレイ|Eメール,トレイ,箱,送信,送信箱,電子メール\n1f4e5|受信トレイ|Eメール,トレイ,受信,受信なし,受信箱,箱,電子メール\n1f4e6|荷物|宅急便,宅配便,小包,段ボール,箱,配送,配達\n1f4eb|閉じた郵便受け（手紙あり）|ポスト,手紙あり,郵便受け,郵便箱,閉じた\n1f4ea|閉じた郵便受け（手紙なし）|ポスト,手紙なし,郵便受け,郵便箱,閉じた\n1f4ec|開いた郵便受け（手紙あり）|ポスト,手紙あり,郵便受け,郵便箱,開いた\n1f4ed|開いた郵便受け（手紙なし）|ポスト,手紙なし,郵便受け,郵便箱,開いた\n1f4ee|郵便ポスト|ポスト,手紙,郵便,郵便箱\n1f5f3-fe0f|投票箱|投票,選挙\n270f-fe0f|鉛筆|文具,文房具\n2712-fe0f|ペン先|万年筆,文具,文房具\n1f58b-fe0f|万年筆|ペン,文具,文房具\n1f58a-fe0f|ペン|ボールペン,文具,文房具\n1f58c-fe0f|絵筆|文具,文房具,絵の具\n1f58d-fe0f|クレヨン|文具,文房具\n1f4dd|鉛筆とメモ|メモ,文具,文房具,紙と鉛筆,鉛筆\n1f4bc|ブリーフケース|かばん,鞄\n1f4c1|フォルダー|ファイル,文具,文房具\n1f4c2|開いたフォルダー|ファイル,フォルダー,文具,文房具,開く\n1f5c2-fe0f|カードフォルダー|インデックス,フォルダー,文具,文房具\n1f4c5|カレンダー|スケジュール,予定,日付\n1f4c6|日めくりカレンダー|カレンダー,スケジュール,予定,日付\n1f5d2-fe0f|メモ帳|ノート,リングメモ,文具,文房具\n1f5d3-fe0f|月めくりカレンダー|カレンダー,スケジュール,予定,日付\n1f4c7|カードインデックス|名刺ホルダー,文具,文房具\n1f4c8|グラフ上向き|グラフ,チャート,データ,上向き,上昇,右肩上がり,成長,折れ線グラフ\n1f4c9|グラフ下向き|チャート,データ,下向き,下降,右肩下がり,折れ線グラフ\n1f4ca|棒グラフ|グラフ,チャート,データ\n1f4cb|クリップボード|クリップ,メモ,文具,文房具\n1f4cc|押しピン|文具,文房具,画鋲\n1f4cd|丸い押しピン|ピン,プッシュピン,地図,押しピン,文具,文房具,画びょう\n1f4ce|クリップ|ゼムクリップ,ペーパークリップ,文具,文房具,紙クリップ\n1f587-fe0f|つながったクリップ|クリップ,ペーパークリップ,文具,文房具,紙クリップ\n1f4cf|定規|ものさし,文具,文房具,直定規\n1f4d0|三角定規|定規,文具,文房具\n2702-fe0f|はさみ|カット,ハサミ,切る,文具,文房具\n1f5c3-fe0f|カードファイルボックス|カード,ファイル,ボックス,文具,文房具,箱\n1f5c4-fe0f|ファイルキャビネット|キャビネット,ファイル,引き出し\n1f5d1-fe0f|ごみ箱|くずかご,ごみかご,ゴミ箱\n1f512|閉じた錠|ロック,南京錠,施錠,錠,鍵\n1f513|開いた錠|ロック,南京錠,解錠,錠,鍵\n1f50f|閉じた錠とペン|プライバシー,ロック,南京錠,鍵\n1f510|閉じた錠と鍵|キー,セキュリティ,ロック,南京錠,安全,錠,鍵\n1f511|鍵|キー,パスワード,開錠\n1f5dd-fe0f|古い鍵|キー,パスワード,手がかり,鍵\n1f528|ハンマー|かなづち,とんかち,工具\n1fa93|斧|おの,ハチェット,工具,木,薪割り\n26cf-fe0f|つるはし|工具,採掘\n2692-fe0f|ハンマーとつるはし|かなづち,つるはし,とんかち,ハンマー,工具\n1f6e0-fe0f|ハンマーとレンチ|かなづち,とんかち,スパナ,レンチ,工具\n1f5e1-fe0f|短刀|ダガー,ナイフ,武器,短剣\n2694-fe0f|クロスした剣|つるぎ,刀,剣,武器\n1f4a3|爆弾|危険,爆発\n1fa83|ブーメラン|オーストラリア,武器,玩具,跳ね返り,返って来る\n1f3f9|弓矢|射手,射手座,弓,星座,武器,矢\n1f6e1-fe0f|盾|シールド,防具\n1fa9a|のこぎり|ノコ,刃,切る,大工,工具,木工\n1f527|レンチ|スパナ,工具\n1fa9b|ねじ回し|スクリュードライバー,ドライバー,マイナスドライバー,工具\n1f529|ボルトとナット|ナット,ボルト,工具\n2699-fe0f|歯車|ギア,工具\n1f5dc-fe0f|万力|クランプ,バイス,工具\n2696-fe0f|天秤|はかり,バランス,化学,天秤座,実験,星座\n1f9af|白杖|つえ,アクセシビリティ,視覚,障がい\n1f517|リンクシンボル|リンク,環\n26d3-fe0f|鎖|くさり,チェーン\n1fa9d|フック|引っかけ,引っ掛け,掛け金,留め金,鉤\n1f9f0|工具箱|ツールボックス,メカニック,整備士,機械工,箱,赤い箱\n1f9f2|U字型磁石|マグネット,引き付ける,正負,磁石,蹄鉄\n1fa9c|はしご|ステッパー,梯子,登る,高所作業\n2697-fe0f|蒸留器|化学,実験\n1f9ea|試験管|ラボ,化学,化学者,実験,科学\n1f9eb|ペトリ皿|バクテリア,培養,実験,生物学,生物学者\n1f9ec|DNA|生命,生物学,生物学者,進化,遺伝子\n1f52c|顕微鏡|サイエンス,実験,研究,科学\n1f52d|望遠鏡|サイエンス,天体観測,科学,観測\n1f4e1|パラボラアンテナ|アンテナ,パラボラ,科学,衛星アンテナ,電波\n1f489|注射器|予防接種,医療器具,医者,注射,病気,薬,針\n1fa78|血液|けが,出血,医療,医者,献血,生理\n1f48a|薬|カプセル,ビタミン剤,医者,病気\n1fa79|絆創膏|けが,ばんそうこう,傷,手当て,薬\n1fa7c|松葉杖|ステッキ,怪我,杖,歩行補助,障がい\n1fa7a|聴診器|医療,医者,心臓,病気\n1fa7b|X線|レントゲン,医者,骨,骨格\n1f6aa|ドア|戸,扉,玄関\n1f6d7|エレベーター|アクセシビリティ,バリアフリー,リフト,昇降機\n1fa9e|鏡|ミラー,メーク,反射,姿見,身だしなみ\n1fa9f|窓|ウィンドウ,フレーム,換気,眺め,開ける\n1f6cf-fe0f|ベッド|ホテル,寝る,睡眠\n1f6cb-fe0f|ソファとランプ|ソファ,ホテル,ランプ,長椅子\n1fa91|椅子|シート,チェア,家具,腰掛け\n1f6bd|便器|お手洗い,トイレ,便座\n1faa0|ラバーカップ|すっぽん,トイレ,プランジャー,吸引カップ,通水カップ\n1f6bf|シャワー|風呂\n1f6c1|バスタブ|泡風呂,浴槽,風呂\n1faa4|ねずみ捕り|おびき寄せる,ばね,わな,チーズ,マウストラップ,仕掛け\n1fa92|剃刀|かみそり,ひげそり,レザー,レーザー,刃,刃物,鋭い\n1f9f4|ローション|シャンプー,ローションボトル,化粧水,日焼け止め\n1f9f7|安全ピン|止めピン\n1f9f9|ほうき|掃く,掃除,魔女\n1f9fa|かご|ピクニック,収穫,洗濯\n1f9fb|トイレットペーパー|キッチンペーパー,ペーパータオル,ロールペーパー\n1faa3|バケツ|おけ,ばけつ,ポリバケツ,容器\n1f9fc|石けん|ソープ,泡,清潔,風呂\n1fae7|泡|あぶく,シャボン玉,バブル,水中,石けん\n1faa5|歯ブラシ|お手入れ,ブラシ,歯磨き,洗面所,虫歯,衛生\n1f9fd|スポンジ|吸収,掃除,海綿\n1f9ef|消火器|消火,消火器具,消防,火事\n1f6d2|ショッピングカート|カート,ショッピング,スーパー,買い物\n1f6ac|煙草|たばこ,タバコ,喫煙\n26b0-fe0f|棺桶|吸血鬼,埋葬,棺,死,死者\n1faa6|墓石|お墓,埋葬,墓地,墓場,石碑,追悼\n26b1-fe0f|骨壺|埋葬,死,葬儀,遺灰\n1f9ff|ナザール・ボンジュウ|お守り,ナザール,ビーズ,邪視,青,魔除け\n1faac|ハムサ|お守り,ファーティマ,ミリアム,手,目,護符\n1f5ff|モアイ|モヤイ,像,石像,顔\n1faa7|プラカード|デモ,主張,抗議,異議,看板\n1faaa|身分証|ID,セキュリティ,免許証,身分証明書,運転免許証";
+var EMO = null;
+var EMO_EXTRA = {'いす':['家具'], 'おかし':['菓子','お菓子','スイーツ','デザート'], 'くだもの':['果物','フルーツ'], 'どうぶつ':['動物'], 'くるま':['車','乗り物'], 'とり':['鳥']};
+function candEmo(topic, used){
+  if (!EMO) EMO = EMO_RAW.split('\n').map(function(l){ var p = l.split('|'); return {hex:p[0], label:p[1], tags:p[2] ? p[2].split(',') : []}; });
+  var vars = variantsOf(topic).concat(EMO_EXTRA[topic] || []), list = [];
+  EMO.forEach(function(e){
+    var sc = 0;
+    vars.forEach(function(v){
+      if (e.label === v) sc = Math.max(sc, 6); else if (e.tags.indexOf(v) >= 0) sc = Math.max(sc, 5);
+      else if (e.label.indexOf(v) >= 0) sc = Math.max(sc, 3); else if (v.length >= 2 && e.tags.some(function(t){ return t.indexOf(v) >= 0; })) sc = Math.max(sc, 2);
+    });
+    if (sc) list.push({id:'emo:' + e.hex, sc:sc, o:e});
+  });
+  return Promise.resolve(rankList(list, used));
+}
+function loadEmo(c){
+  var url = 'https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/' + c.o.hex + '.webp';
+  return loadImg(url, true).then(function(im){
+    var pc = makePiece(im, {}); if (!pc) return null;
+    pc.credit = {title:c.o.label, artist:'Microsoft Fluent Emoji', lic:'MIT License', url:'https://github.com/microsoft/fluentui-emoji'}; pc.url = url;
+    return pc;
+  });
+}
+
+var SOURCES = {wiki:{cand:candWiki, load:loadWiki}, ira:{cand:candIra, load:loadIraC}, emo:{cand:candEmo, load:loadEmo}};
+// Gather pieces from every chosen source, taking turns so each one gets about the same share.
 function searchPieces(topic, cb){
   var my = ++job; POOL = []; TOPIC = topic;
-  if (SEEN.topic !== S.src + ':' + topic) SEEN = {topic:S.src + ':' + topic, titles:{}};
-  var used = SEEN.titles;
-  if (S.src === 'ira') { searchIra(topic, cb, my, used); return my; }
-  toEnglish(topicQuery(topic)).then(function(en){
-    if (my !== job) return;
-    var qs = [en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated'];
-    var seen = {}, fresh = [], old = [], qi = 0, busy = 0, done = false;
-    function finish(){ if (done || my !== job) return; done = true; cb.done(); }
-    function next(){ return fresh.length ? fresh.shift() : (qi >= qs.length ? old.shift() : null); }
-    function pump(){
-      if (my !== job || done) return;
-      if (POOL.length >= TARGET) return finish();
-      var o;
-      while (busy < 4 && (o = next())) {
-        busy++;
-        (function(o){
-          loadImg(o.ii.thumburl, true).then(function(im){
-            if (my !== job || POOL.length >= TARGET) return;
-            var pc = makePiece(im, {});
-            if (pc) {
-              var md = o.ii.extmetadata || {};
-              pc.credit = {title:o.title.replace(/^File:/, ''), artist:strip(md.Artist && md.Artist.value), lic:(md.LicenseShortName && md.LicenseShortName.value) || '', url:o.ii.descriptionurl};
-              used[o.title] = 1; POOL.push(pc); cb.progress(pc);
-            }
-          }).catch(function(){}).then(function(){ busy--; pump(); });
-        })(o);
-      }
-      if (busy === 0 && !fresh.length) {
-        if (qi < qs.length) { commons(qs[qi++]).then(function(list){ list.forEach(function(o){ if (!seen[o.title]) { seen[o.title] = 1; (used[o.title] ? old : fresh).push(o); } }); pump(); }); }
-        else if (!old.length) finish();
-      }
+  var srcs = S.srcs.slice(), key = srcs.join('+') + ':' + topic;
+  if (SEEN.topic !== key) SEEN = {topic:key, titles:{}};
+  var used = SEEN.titles, st = {}, done = false;
+  IRA_STAT = {direct:0, proxy:0};
+  srcs.forEach(function(k){ st[k] = {n:0, busy:0, list:null, out:false, found:0}; });
+  function diag(){
+    var d = $('loadDiag'); if (!d) return;
+    d.textContent = srcs.map(function(k){ var t = st[k]; return SRC_NAME[k] + ' ' + t.n + (t.list ? '' : '…'); }).join(' ・ ') + (IRA_STAT.proxy ? '（いらすとやは中継 ' + IRA_STAT.proxy + '）' : '');
+  }
+  function live(){ return srcs.filter(function(k){ return !st[k].out; }); }
+  function finish(){ if (done || my !== job) return; done = true; diag(); cb.done(); }
+  function can(k){
+    var tot = 0; srcs.forEach(function(x){ tot += st[x].busy; });
+    if (POOL.length + tot >= TARGET) return false;
+    var mine = st[k].n + st[k].busy, low = Infinity;
+    live().forEach(function(x){ if (st[x].list || !st[x].late) low = Math.min(low, st[x].n + st[x].busy); });
+    return mine <= low;
+  }
+  function pump(k){
+    var t = st[k]; if (my !== job || done || t.out || !t.list) return;
+    var c;
+    while (t.busy < 4 && can(k) && (c = t.list.shift())) {
+      t.busy++;
+      (function(c){
+        SOURCES[k].load(c).then(function(pc){
+          if (my !== job || done || !pc) return;
+          if (POOL.length >= TARGET) return;
+          used[c.id] = 1; pc.src = k; t.n++; POOL.push(pc); cb.progress(pc);
+        }).catch(function(){}).then(function(){ t.busy--; diag(); kick(); });
+      })(c);
     }
-    pump();
+    if (!t.list.length && t.busy === 0) t.out = true;
+  }
+  function kick(){
+    if (my !== job || done) return;
+    if (POOL.length >= TARGET) return finish();
+    srcs.forEach(pump);
+    if (srcs.every(function(k){ return st[k].out; })) finish();
+  }
+  // a slow source holds the others back for a while (so the mix stays even), but not forever
+  setTimeout(function(){ srcs.forEach(function(k){ st[k].late = true; }); kick(); }, 6000);
+  srcs.forEach(function(k){
+    SOURCES[k].cand(topic, used).then(function(list){ st[k].list = list || []; st[k].found = st[k].list.length; }, function(){ st[k].list = []; })
+      .then(function(){ diag(); kick(); });
   });
+  diag();
   return my;
 }
 function fillBlobs(){
@@ -614,14 +670,14 @@ function startPhotos(files){
 var cv = $('cv'), ctx = cv.getContext('2d'), DPR = 1, CW = 0, CH = 0, SC = 1;
 function fit(){ DPR = Math.min(2, window.devicePixelRatio || 1); CW = innerWidth; CH = innerHeight; cv.width = CW*DPR; cv.height = CH*DPR; SC = Math.min(CW / 400, CH / 560); }
 fit(); addEventListener('resize', fit);
-var GROUND_Y = 0, STAGE_W = 260;
+var GROUND_Y = 0, STAGE_W = 320;
 var world = null, placed = [], byId = {}, cur = null, curX = 0, curAng = 0, angNow = 0, state = 'idle', turnP = 0, count = 0, topY = 0, idSeq = 0;
 var camTop = -400, camTarget = -400, dropT = 0, still = 0, overT = 0, loser = -1, bag = [], hintOn = false, LOCALWINS = [0, 0], roundNo = 0, NET = null;
 
 function shuffleBag(){ bag = POOL.map(function(_, i){ return i; }); for (var i = bag.length - 1; i > 0; i--) { var j = (Math.random() * (i+1)) | 0, t = bag[i]; bag[i] = bag[j]; bag[j] = t; } }
 function nextPi(){ if (!bag.length) shuffleBag(); return bag.pop(); }
 function bad(b){ return !isFinite(b.position.x) || !isFinite(b.position.y) || !isFinite(b.angle); }
-function randScale(pc){ return Math.sqrt(3600 * (0.7 + Math.random() * 0.65) / pc.area); }
+function randScale(pc){ return Math.sqrt(2300 * (0.7 + Math.random() * 0.65) / pc.area); }
 function polyCentroid(v){
   var a = 0, cx = 0, cy = 0;
   for (var i = 0; i < v.length; i++) { var j = (i + 1) % v.length, f = v[i].x * v[j].y - v[j].x * v[i].y; a += f; cx += (v[i].x + v[j].x) * f; cy += (v[i].y + v[j].y) * f; }
@@ -696,7 +752,7 @@ function newRound(starter){
   } else world = null;
   placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; cur = null;
   setNetClass(); clearBubbles();
-  show(null); camTop = camTarget = GROUND_Y + 160 - CH / SC;
+  show(null); camTop = camTarget = baseCam();
   if (isHost()) {
     if (NET) send({t:'round', st:turnP, wins:NET.wins});
     newTurn();
@@ -704,6 +760,8 @@ function newRound(starter){
 }
 var CFG = {g:20, fric:2, gfric:2, ldamp:1, adamp:6, sub:2, vi:10, pit:6, vmax:6, gap:15};
 if (window.__cfg) for (var ck in window.__cfg) CFG[ck] = window.__cfg[ck];
+// keep the island and a strip of sea above the buttons at the bottom
+function baseCam(){ return GROUND_Y + 62 + 104 / SC - CH / SC; }
 function computeTop(){ topY = GROUND_Y; placed.forEach(function(b){ if (isFinite(b.bounds.min.y)) topY = Math.min(topY, b.bounds.min.y); }); }
 function newTurn(){
   computeTop();
@@ -712,7 +770,7 @@ function newTurn(){
   if (NET) send({t:'turn', pi:pi, sc:sc, tp:turnP, n:count, top:topY});
 }
 function beginAim(pi, sc){
-  camTarget = Math.min(GROUND_Y + 160 - CH / SC, topY - 300);
+  camTarget = Math.min(baseCam(), topY - 300);
   cur = makeBody(pi, sc); curX = 0; curAng = angNow = 0; setAng(cur, 0); placeCur();
   state = 'aim'; updHud();
 }
@@ -1063,20 +1121,23 @@ function draw(t){
     if (py < top - 60 || py > bot + 60) continue;
     ctx.beginPath(); ctx.ellipse(cx, py, 44, 15, 0, 0, 7); ctx.ellipse(cx + 22, py - 10, 26, 16, 0, 0, 7); ctx.ellipse(cx - 20, py - 6, 22, 13, 0, 0, 7); ctx.fill();
   }
-  var sea = GROUND_Y + 90;
+  // low, wide island: flat grassy top (= the physics ground), short sandy sides, sitting in the sea
+  var sea = GROUND_Y + 26, hw = STAGE_W / 2;
+  ctx.fillStyle = '#f3dfae'; ctx.beginPath(); ctx.moveTo(-hw - 6, GROUND_Y + 14); ctx.quadraticCurveTo(-hw - 18, sea - 2, -hw - 26, sea + 6); ctx.lineTo(hw + 26, sea + 6); ctx.quadraticCurveTo(hw + 18, sea - 2, hw + 6, GROUND_Y + 14); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#d9b07c'; ctx.beginPath(); ctx.moveTo(-hw, GROUND_Y + 6); ctx.lineTo(hw, GROUND_Y + 6); ctx.quadraticCurveTo(hw + 4, GROUND_Y + 14, hw - 4, sea + 4); ctx.lineTo(-hw + 4, sea + 4); ctx.quadraticCurveTo(-hw - 4, GROUND_Y + 14, -hw, GROUND_Y + 6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#9fd38a'; roundRect(-hw, GROUND_Y - 1, STAGE_W, 11, 6); ctx.fill();
+  ctx.fillStyle = '#8cc77a'; [-0.82, -0.45, 0.1, 0.52, 0.86].forEach(function(f){ ctx.beginPath(); ctx.ellipse(hw * f, GROUND_Y + 9, 9, 3, 0, 0, 7); ctx.fill(); });
+  [[-0.7, '#ffb3c1'], [-0.62, '#fff3a6'], [0.62, '#ffb3c1'], [0.72, '#ffffff']].forEach(function(f){ ctx.fillStyle = f[1]; ctx.beginPath(); ctx.arc(hw * f[0], GROUND_Y + 15, 3.5, 0, 7); ctx.fill(); });
   if (sea < bot) {
     ctx.fillStyle = '#8cc8e8'; ctx.fillRect(-vw, sea, vw * 2, bot - sea + 20);
     ctx.strokeStyle = '#d6eefa'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath();
-    for (var x = -vw / 2 - 20; x < vw / 2 + 20; x += 10) ctx.lineTo(x, sea + Math.sin(x * 0.06 + t * 1.6) * 3);
+    for (var x = -vw / 2 - 20; x < vw / 2 + 20; x += 10) ctx.lineTo(x, sea + Math.sin(x * 0.06 + t * 1.6) * 2.5);
     ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.ellipse(0, sea + 3, hw + 30, 5, 0, 0, Math.PI); ctx.stroke();
   }
-  ctx.fillStyle = '#c99f74'; ctx.beginPath(); ctx.moveTo(-STAGE_W / 2, GROUND_Y + 30); ctx.lineTo(STAGE_W / 2, GROUND_Y + 30); ctx.lineTo(STAGE_W / 2 - 40, sea + 10); ctx.lineTo(-STAGE_W / 2 + 40, sea + 10); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#ddb88c'; roundRect(-STAGE_W / 2, GROUND_Y, STAGE_W, 40, 10); ctx.fill();
-  ctx.fillStyle = '#9fd38a'; roundRect(-STAGE_W / 2, GROUND_Y, STAGE_W, 11, 6); ctx.fill();
-  [[-100, '#ffb3c1'], [-82, '#fff3a6'], [96, '#ffb3c1'], [112, '#ffffff']].forEach(function(f){ ctx.fillStyle = f[1]; ctx.beginPath(); ctx.arc(f[0], GROUND_Y + 20, 4, 0, 7); ctx.fill(); });
   if (state === 'aim' && cur) {
     ctx.strokeStyle = MODE === 'solo' ? 'rgba(59,74,84,.35)' : (turnP ? 'rgba(107,159,224,.7)' : 'rgba(239,138,111,.7)');
-    ctx.lineWidth = 2.5; ctx.setLineDash([6, 7]); ctx.beginPath(); ctx.moveTo(curX, cur.bounds.max.y + 4); ctx.lineTo(curX, GROUND_Y + 40); ctx.stroke(); ctx.setLineDash([]);
+    ctx.lineWidth = 2.5; ctx.setLineDash([6, 7]); ctx.beginPath(); ctx.moveTo(curX, cur.bounds.max.y + 4); ctx.lineTo(curX, GROUND_Y); ctx.stroke(); ctx.setLineDash([]);
   }
   placed.forEach(drawBody);
   if ((state === 'aim' || state === 'sent') && cur) {
