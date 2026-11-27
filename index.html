@@ -82,7 +82,7 @@ input.tx:focus{border-color:var(--p1)}
 @keyframes fl{0%{transform:translateY(16px) scale(.6);opacity:0}12%{transform:translateY(0) scale(1.08);opacity:1}20%{transform:scale(1)}80%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
 body:not(.play) #side,body:not(.play) #ctrl,body:not(.play) #waitTx,body:not(.play) #quit{display:none}
 body:not(.net) #side,body:not(.net) #chatLog,body:not(.net) #roomTag{display:none}
-body:not(.play):not(.result) #hud,body:not(.play):not(.result) #chatLog,body:not(.play):not(.result) #roomTag{display:none}
+body:not(.play):not(.result) #hud,body:not(.play):not(.result):not(.talk) #chatLog,body:not(.play):not(.result):not(.talk) #roomTag{display:none}
 #rxBar,#chatBar{display:none}
 body.play.rxOpen #rxBar{display:flex}
 body.play.rxOpen #chatLog{bottom:calc(env(safe-area-inset-bottom) + 146px)}
@@ -93,6 +93,18 @@ body.result.net #chatBar{display:flex}
 body.result #chatLog{bottom:calc(env(safe-area-inset-bottom) + 112px);color:#fff;text-shadow:0 0 3px #3b4a54,0 0 3px #3b4a54,0 0 3px #3b4a54}
 /* result */
 #res{background:rgba(59,74,84,.45);justify-content:center;z-index:10}
+#pick,#waitL,#toss{background:rgba(207,234,246,.94);justify-content:center;gap:12px;overflow-y:auto}
+#tossName{font-size:46px;font-weight:900;padding:10px 26px;border-radius:24px;background:var(--panel);border:4px solid var(--ink);min-width:200px;text-align:center}
+.lenlbl{font-size:15px;color:var(--muted);margin-bottom:6px}
+.seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg3 button{font-size:17px;padding:10px 0}
+.seg3 button.on{background:var(--p0);color:#fff;border-color:var(--p0d)}
+.lenNote{font-size:13px;color:var(--muted);margin-top:8px}
+.mstat{font-size:14px;color:var(--muted)}
+body.talk.net #rxBar{display:flex;bottom:calc(env(safe-area-inset-bottom) + 64px)}
+body.talk.net #chatBar{display:flex}
+body.talk.net #chatLog{display:block;bottom:calc(env(safe-area-inset-bottom) + 112px)}
+body.talk.net .layer{padding-bottom:calc(env(safe-area-inset-bottom) + 150px)}
 body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-top) + 74px)}
 #res .card{align-items:center;text-align:center;gap:10px}
 #resBig{font-size:27px;font-weight:900;line-height:1.2}
@@ -159,10 +171,13 @@ body:not(.play) #gSet{display:none}
   <button class="topBtn" id="setBtn" aria-label="設定">⚙</button>
   <h1>たわーばとる<small>なんでも積みあげ</small></h1>
   <div class="card">
-    <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
-    <div class="chips" id="chips"></div>
-    <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
     <div class="seg" id="mode"><button data-m="solo">👤 ひとり</button><button data-m="cpu">🤖 CPU</button><button data-m="net">🌐 ネット対戦</button></div>
+    <div id="topicHome"><div id="topicBlock" style="display:flex;flex-direction:column;gap:12px">
+      <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
+      <div class="chips" id="chips"></div>
+      <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
+    </div></div>
+    <div id="lenBox" class="hidden"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lenSeg"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div><div class="lenNote">先手はランダム。お題は先手から交代できめるよ</div></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
       <input id="myName" class="tx" type="text" maxlength="8" placeholder="なまえ" autocomplete="off" style="font-size:17px;padding:10px 12px">
       <div class="netrow"><button id="mkRoom">🏠 部屋をつくる</button><button id="joinBtn">🚪 部屋に入る</button></div>
@@ -190,10 +205,32 @@ body:not(.play) #gSet{display:none}
   <div id="roomNo">----</div>
   <button class="link" id="copyNo" style="margin-top:-6px">ばんごうをコピー</button>
   <div class="ltx" id="lobTx" style="font-size:17px">つくってるよ…</div>
-  <div class="thumbs" id="lobThumbs"></div>
+  <div id="lobLenBox" class="hidden" style="width:100%;max-width:320px"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lobLen"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div></div>
+  <div class="ltx hidden" id="lobLenTx" style="font-size:16px"></div>
   <button class="big hidden" id="lobGo" style="max-width:280px">はじめる</button>
-  <button class="sub hidden" id="lobRe" style="max-width:280px">🔄 パーツをさがしなおす</button>
   <button class="link" id="lobBack">もどる</button>
+</div>
+
+<div id="pick" class="layer hidden">
+  <div class="ltx" id="pickTx" style="margin-top:auto">あなたがお題をきめる番</div>
+  <div class="ltx" id="pickSub" style="font-size:14px;color:var(--muted)"></div>
+  <div class="card" id="pickSlot"></div>
+  <button class="big" id="pickGo">🔍 これでさがす</button>
+  <button class="link" id="pickBack" style="margin-bottom:auto">やめる</button>
+</div>
+
+<div id="waitL" class="layer hidden">
+  <div class="ltx" id="waitTop" style="margin-top:auto"></div>
+  <div class="ltx" id="waitTx2" style="font-size:16px;color:var(--muted)"></div>
+  <div class="thumbs" id="waitThumbs"></div>
+  <button class="link" id="waitBack" style="margin-bottom:auto">やめる</button>
+</div>
+
+<div id="toss" class="layer hidden">
+  <div class="ltx" style="margin-top:auto;font-size:18px;color:var(--muted)" id="tossLen"></div>
+  <div class="ltx" style="font-size:24px">先手は…</div>
+  <div id="tossName"></div>
+  <div class="ltx" id="tossSub" style="font-size:16px;color:var(--muted);margin-bottom:auto"></div>
 </div>
 
 <div id="res" class="layer hidden"><div class="card" id="resCard"></div></div>
@@ -259,6 +296,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.7.0', d:'2026-11-28', items:['🏆 CPU対戦とネット対戦は「1勝・3勝・5勝先取」から選べるようになりました','🪙 先手はランダムで決まり、お題は先手から1ゲームごとに交代できめます','💬 ネット対戦では、お題をえらんでいるあいだもチャットとリアクションができます']},
   {v:'0.6.0', d:'2026-11-28', items:['🤖 CPUと対戦できるようになりました（あそびかたは「ひとり」「CPU」「ネット対戦」の3つに）','🎵 ほのぼのしたBGMと効果音をつけました。設定で音の大きさや振動を変えられます','⚙ 設定と、この更新内容の画面をつけました']},
   {v:'0.5.0', d:'2026-11-28', items:['😊 画像の探し先に「えもじ」を追加。ウィキメディア・いらすとや・えもじを組み合わせて探せます','🏝️ 島を広く、低くしました','🧱 落ちてくるパーツを少し小さくしました']},
   {v:'0.4.0', d:'2026-11-28', items:['🖼️ いらすとやの絵からもパーツを作れるようになりました']},
@@ -287,10 +325,13 @@ function toast(t){ var e = $('toast'); e.textContent = t; e.style.opacity = 1; c
 
 /* ---------- screens ---------- */
 function show(id){
-  ['home','load','lobby','res','cred'].forEach(function(k){ $(k).classList.toggle('hidden', k !== id); });
+  ['home','load','lobby','res','cred','pick','waitL','toss'].forEach(function(k){ $(k).classList.toggle('hidden', k !== id); });
   document.body.classList.toggle('play', id === null);
   document.body.classList.toggle('result', id === 'res');
+  // between games of a net match you can still chat and react
+  document.body.classList.toggle('talk', ['pick','waitL','toss','load','lobby'].indexOf(id) >= 0 && !!NET && !!NET.open);
   if (id !== null) document.body.classList.remove('rxOpen', 'chatOpen');
+  if (id !== 'pick' && $('topicBlock').parentNode !== $('topicHome')) $('topicHome').appendChild($('topicBlock'));
 }
 function setNetClass(){ document.body.classList.toggle('net', MODE === 'net'); }
 
@@ -316,15 +357,22 @@ function setMode(m){
   MODE = m; S.mode = m; save();
   Array.prototype.forEach.call($('mode').children, function(b){ b.classList.toggle('on', b.dataset.m === m); });
   $('netBox').classList.toggle('hidden', m !== 'net');
+  $('topicHome').classList.toggle('hidden', m !== 'solo');
+  $('lenBox').classList.toggle('hidden', m !== 'cpu');
   $('start').classList.toggle('hidden', m === 'net');
-  $('photoBtn').classList.toggle('hidden', m === 'net');
+  $('photoBtn').classList.toggle('hidden', m !== 'solo');
 }
+// 何勝先取
+if ([1, 3, 5].indexOf(S.matchLen) < 0) S.matchLen = 3;
+function drawLen(){ ['lenSeg', 'lobLen'].forEach(function(id){ Array.prototype.forEach.call($(id).children, function(b){ b.classList.toggle('on', +b.dataset.n === S.matchLen); }); }); }
+['lenSeg', 'lobLen'].forEach(function(id){ $(id).addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; S.matchLen = +b.dataset.n; save(); drawLen(); if (id === 'lobLen' && NET && NET.open) send({t:'len', n:S.matchLen}); }); });
+drawLen();
 $('mode').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setMode(b.dataset.m); });
 setMode(MODE);
 function getTopic(){ var t = ($('topic').value || '').trim(); if (!t) { t = CHIPS[0][0]; $('topic').value = t; } S.topic = t; save(); return t; }
 function getName(){ var n = ($('myName').value || '').trim().slice(0, 8); S.name = n; save(); return n || 'ななし'; }
-$('topic').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('topic').blur(); if (MODE !== 'net') startLocal(); } });
-$('start').onclick = function(){ startLocal(); };
+$('topic').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('topic').blur(); if (!$('pick').classList.contains('hidden')) pickGo(); else if (MODE === 'solo') startLocal(); } });
+$('start').onclick = function(){ if (MODE === 'cpu') startCpuMatch(); else startLocal(); };
 $('photoBtn').onclick = function(){ $('photo').click(); };
 $('photo').onchange = function(){ var fs = Array.prototype.slice.call(this.files || []); this.value = ''; if (fs.length) startPhotos(fs); };
 $('credBtn').onclick = showCredits;
@@ -685,24 +733,37 @@ function fillBlobs(){
   $('credBtn').classList.toggle('hidden', !CREDITS.length);
 }
 
-/* ---------- local start ---------- */
-function startLocal(){
-  if (MODE === 'net') return;
-  var topic = getTopic();
-  NET = null; setNetClass();
-  $('thumbs').innerHTML = ''; $('loadN').textContent = '0'; $('loadDiag').textContent = ''; $('loadTx').textContent = '「' + topic + '」をさがしてるよ';
-  $('loadGo').classList.add('hidden'); $('loadRe').classList.add('hidden');
+/* ---------- searching for pieces (whoever picks the topic) ---------- */
+// LOADCTX.mine: the person here picked the topic (show これであそぶ / さがしなおす); LOADCTX.done: what happens once the pieces are fixed
+var LOADCTX = {mine:true, done:null, back:null};
+function runSearch(topic, ctx){
+  LOADCTX = ctx;
+  $('thumbs').innerHTML = ''; $('loadN').textContent = '0'; $('loadDiag').textContent = '';
+  $('loadTx').textContent = (ctx.label || '') + '「' + topic + '」をさがしてるよ';
+  $('loadGo').classList.add('hidden'); $('loadRe').classList.add('hidden'); $('loadBack').classList.toggle('hidden', !ctx.mine);
   show('load');
+  if (NET && NET.open && ctx.mine) send({t:'topic', topic:topic});
   searchPieces(topic, {
-    progress:function(pc){ $('thumbs').appendChild(thumbCanvas(pc)); $('loadN').textContent = POOL.length; if (POOL.length >= 4) $('loadGo').classList.remove('hidden'); },
-    done:function(){ $('loadTx').textContent = POOL.length ? '「' + topic + '」がそろったよ' : '見つからなかったよ'; $('loadGo').classList.remove('hidden'); $('loadRe').classList.remove('hidden'); }
+    progress:function(pc){ $('thumbs').appendChild(thumbCanvas(pc)); $('loadN').textContent = POOL.length; if (POOL.length >= 4 && ctx.mine) $('loadGo').classList.remove('hidden'); },
+    done:function(){
+      $('loadTx').textContent = (ctx.label || '') + (POOL.length ? '「' + topic + '」がそろったよ' : '「' + topic + '」は見つからなかったよ');
+      if (ctx.mine) { $('loadGo').classList.remove('hidden'); $('loadRe').classList.remove('hidden'); }
+      else setTimeout(function(){ if (LOADCTX === ctx) loadDone(); }, 900);
+    }
   });
 }
-$('loadGo').onclick = function(){ job++; fillBlobs(); LOCALWINS = [0, 0]; newRound(0); };
-$('loadRe').onclick = function(){ startLocal(); };
-$('loadBack').onclick = function(){ job++; show('home'); };
+function loadDone(){ job++; fillBlobs(); var f = LOADCTX.done; if (f) f(); }
+function startLocal(){
+  if (MODE !== 'solo') return;
+  var topic = getTopic();
+  NET = null; MATCH = null; setNetClass();
+  runSearch(topic, {mine:true, done:function(){ newRound(0); }, back:function(){ show('home'); }});
+}
+$('loadGo').onclick = function(){ loadDone(); };
+$('loadRe').onclick = function(){ var c = LOADCTX; runSearch(TOPIC, c); };
+$('loadBack').onclick = function(){ job++; var b = LOADCTX.back; if (b) b(); else show('home'); };
 function startPhotos(files){
-  job++; NET = null; setNetClass(); POOL = []; TOPIC = '写真';
+  job++; NET = null; MATCH = null; setNetClass(); POOL = []; TOPIC = '写真';
   $('thumbs').innerHTML = ''; $('loadN').textContent = '0'; $('loadTx').textContent = '写真をパーツにしてるよ';
   $('loadGo').classList.add('hidden'); $('loadRe').classList.add('hidden');
   show('load');
@@ -710,7 +771,7 @@ function startPhotos(files){
   Promise.all(files.slice(0, 20).map(function(f){
     var u = URL.createObjectURL(f);
     return loadImg(u, false).then(function(im){ var pc = makePiece(im, {force:true}); URL.revokeObjectURL(u); if (pc && my === job) { POOL.push(pc); $('thumbs').appendChild(thumbCanvas(pc)); $('loadN').textContent = POOL.length; } }).catch(function(){});
-  })).then(function(){ if (my === job) { $('loadTx').textContent = 'できたよ'; $('loadGo').classList.remove('hidden'); } });
+  })).then(function(){ if (my === job) { LOADCTX = {mine:true, done:function(){ newRound(0); }, back:function(){ show('home'); }}; $('loadTx').textContent = 'できたよ'; $('loadGo').classList.remove('hidden'); } });
 }
 
 /* ---------- game core ---------- */
@@ -719,7 +780,7 @@ function fit(){ DPR = Math.min(2, window.devicePixelRatio || 1); CW = innerWidth
 fit(); addEventListener('resize', fit);
 var GROUND_Y = 0, STAGE_W = 320;
 var world = null, placed = [], byId = {}, cur = null, curX = 0, curAng = 0, angNow = 0, state = 'idle', turnP = 0, count = 0, topY = 0, idSeq = 0;
-var camTop = -400, camTarget = -400, dropT = 0, still = 0, overT = 0, loser = -1, bag = [], hintOn = false, LOCALWINS = [0, 0], roundNo = 0, NET = null;
+var camTop = -400, camTarget = -400, dropT = 0, still = 0, overT = 0, loser = -1, bag = [], hintOn = false, roundNo = 0, NET = null, MATCH = null;
 
 function shuffleBag(){ bag = POOL.map(function(_, i){ return i; }); for (var i = bag.length - 1; i > 0; i--) { var j = (Math.random() * (i+1)) | 0, t = bag[i]; bag[i] = bag[j]; bag[j] = t; } }
 function nextPi(){ if (!bag.length) shuffleBag(); return bag.pop(); }
@@ -787,7 +848,7 @@ function addPhysics(b){
 function isHost(){ return !NET || NET.role === 'host'; }
 function myTurn(){ if (MODE === 'solo') return true; if (MODE === 'cpu') return turnP === 0; return NET && turnP === NET.me; }
 function pname(p){
-  if (MODE === 'net') return p === NET.me ? 'あなた' : (NET.names[p] || '相手');
+  if (MODE === 'net' && NET) return p === NET.me ? 'あなた' : (NET.names[p] || '相手');
   return p ? 'CPU' : 'あなた';
 }
 
@@ -802,7 +863,7 @@ function newRound(starter){
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
   if (isHost()) {
-    if (NET) send({t:'round', st:turnP, wins:NET.wins});
+    if (NET) send({t:'round', st:turnP, wins:MATCH ? MATCH.wins : [0, 0]});
     newTurn();
   } else { state = 'wait'; updHud(); }
 }
@@ -831,9 +892,8 @@ function updHud(){
     t.textContent = pname(turnP) + 'の番';
     col = turnP ? 'var(--p1d)' : 'var(--p0d)'; t.style.color = col; t.style.borderColor = turnP ? 'var(--p1)' : 'var(--p0)';
   }
-  var w = MODE === 'net' ? NET.wins : LOCALWINS;
-  if (MODE === 'solo') $('tally').innerHTML = '';
-  else $('tally').innerHTML = '<span style="color:var(--p0d)">' + esc(pname(0)) + ' ' + w[0] + '</span><span>-</span><span style="color:var(--p1d)">' + w[1] + ' ' + esc(pname(1)) + '</span>';
+  if (MODE === 'solo' || !MATCH) $('tally').innerHTML = '';
+  else { var w = MATCH.wins; $('tally').innerHTML = '<span style="color:var(--p0d)">' + esc(pname(0)) + ' ' + w[0] + '</span><span>-</span><span style="color:var(--p1d)">' + w[1] + ' ' + esc(pname(1)) + '</span><span class="mstat">（' + MATCH.len + '勝先取）</span>'; }
   var mine = myTurn() && state === 'aim';
   $('ctrl').style.visibility = mine ? 'visible' : 'hidden';
   $('waitTx').textContent = (MODE !== 'solo' && !mine && state !== 'over' && state !== 'idle') ? (state === 'aim' ? pname(turnP) + 'が考え中…' : 'ゆれてる…') : '';
@@ -858,7 +918,7 @@ $('quit').onclick = function(){
   if (Date.now() - quitArm > 2500) { quitArm = Date.now(); toast('もう一回おすと やめるよ'); return; }
   leave();
 };
-function leave(){ state = 'idle'; CPU = null; if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
+function leave(){ state = 'idle'; CPU = null; MATCH = null; job++; if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
 addEventListener('keydown', function(e){
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (state !== 'aim' || !myTurn()) return;
@@ -879,8 +939,8 @@ function gameOver(who){
   state = 'over'; loser = who; overT = 0; cur = null; CPU = null;
   sfx('splash'); vib([40, 40, 80]); if (NET) send({t:'fx', k:'splash'});
   if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
-  else if (MODE === 'cpu') { LOCALWINS[1 - who]++; S.wins[1 - who]++; save(); }
-  else { NET.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:NET.wins}); }
+  else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); }
+  else { MATCH.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:MATCH.wins}); }
   updHud();
 }
 var NEWBEST = false;
@@ -888,36 +948,39 @@ var NEWBEST = false;
 /* ---------- result ---------- */
 function miniThumbs(){ return '<div class="mini" id="miniT"></div>'; }
 function fillMini(){ var m = $('miniT'); if (!m) return; POOL.slice(0, 10).forEach(function(pc){ m.appendChild(thumbCanvas(pc)); }); }
+function matchOver(){ return MATCH && (MATCH.wins[0] >= MATCH.len || MATCH.wins[1] >= MATCH.len); }
 function renderResult(){
-  var c = $('resCard'), h = '';
+  var c = $('resCard'), h = '', on = function(id, f){ var e = $(id); if (e) e.onclick = f; };
   if (MODE === 'solo') {
     var b = S.best[TOPIC] || 0;
     h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (NEWBEST ? '🏆 さいこう記録！' : '🏆 さいこう ' + b + ' こ') + ' ・「' + esc(TOPIC) + '」</div>';
     h += '<button class="big" id="rAgain">もう一回</button>';
-  } else if (MODE === 'cpu') {
-    var w = 1 - loser;
-    h += '<div id="resBig" style="color:' + (w ? 'var(--p1d)' : 'var(--p0d)') + '">' + (w ? 'ざんねん… CPUの勝ち' : '🏆 あなたの勝ち！') + '</div><div id="resSub">' + pname(loser) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>';
-    h += tchips(LOCALWINS) + '<button class="big" id="rAgain">もう一回</button>';
-  } else {
-    var win = loser !== NET.me, them = 1 - NET.me;
-    h += '<div id="resBig" style="color:' + (win ? 'var(--p0d)' : 'var(--p1d)') + '">' + (win ? '🏆 あなたの勝ち！' : 'ざんねん… ' + esc(pname(them)) + 'の勝ち') + '</div>';
-    h += '<div id="resSub">' + esc(pname(loser)) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>' + tchips(NET.wins);
-    h += '<div class="want"><div class="' + (NET.want[NET.me] ? 'on' : '') + '">' + (NET.want[NET.me] ? '✓ あなた 再戦OK' : 'あなた まだ') + '</div><div class="' + (NET.want[them] ? 'on them' : '') + '">' + (NET.want[them] ? '🙋 ' + esc(pname(them)) + ' 再戦したい！' : esc(pname(them)) + ' 考え中') + '</div></div>';
-    h += '<button class="big" id="rWant">' + (NET.want[NET.me] ? '待ってるよ…' : '再戦する') + '</button>';
-  }
-  if (MODE !== 'net' || NET.role === 'host') {
     if (TOPIC !== '写真') h += '<div class="prow">' + miniThumbs() + '<button id="rRe">🔄 パーツをさがしなおす</button></div>';
-    h += '<div id="topicBox" class="hidden" style="width:100%;display:flex;gap:6px"><input id="rTopic" class="tx" type="text" placeholder="新しいお題" style="font-size:17px;padding:9px 12px"><button id="rTopicGo" style="width:72px">さがす</button></div>';
-    h += '<button class="link" id="rTopicBtn">お題をかえる</button>';
-  } else h += '<div style="font-size:13px;color:var(--muted)">パーツとお題は部屋の人がえらぶよ</div>';
-  h += '<button class="link" id="rLeave">' + (MODE === 'net' ? '部屋を出る' : 'タイトルへ') + '</button>';
-  c.innerHTML = h; fillMini();
-  var on = function(id, f){ var e = $(id); if (e) e.onclick = f; };
-  on('rAgain', function(){ newRound(MODE === 'cpu' ? roundNo % 2 : 0); });
-  on('rWant', function(){ if (NET.want[NET.me]) return; NET.want[NET.me] = true; send({t:'want'}); renderResult(); checkWant(); });
-  on('rRe', function(){ reSearch(TOPIC); });
-  on('rTopicBtn', function(){ if (MODE === 'net') { $('topicBox').classList.remove('hidden'); $('rTopic').focus(); } else { state = 'idle'; show('home'); } });
-  on('rTopicGo', function(){ var t = ($('rTopic').value || '').trim(); if (t) { $('topic').value = t; S.topic = t; save(); reSearch(t); } });
+    h += '<button class="link" id="rHome">お題をかえる</button>';
+    c.innerHTML = h; fillMini();
+    on('rAgain', function(){ newRound(0); });
+    on('rRe', function(){ $('topic').value = TOPIC; startLocal(); });
+    on('rHome', function(){ state = 'idle'; show('home'); });
+    return;
+  }
+  var me = MODE === 'net' ? NET.me : 0, them = 1 - me, win = loser !== me, done = matchOver();
+  var champ = done ? (MATCH.wins[me] >= MATCH.len) : null;
+  if (done) h += '<div id="resBig" style="color:' + (champ ? 'var(--p0d)' : 'var(--p1d)') + '">' + (champ ? '🎉 あなたの優勝！' : esc(pname(them)) + 'の優勝…') + '</div>';
+  else h += '<div id="resBig" style="color:' + (win ? 'var(--p0d)' : 'var(--p1d)') + '">' + (win ? '🏆 あなたの勝ち！' : 'ざんねん… ' + esc(pname(them)) + 'の勝ち') + '</div>';
+  h += '<div id="resSub">' + esc(pname(loser)) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>' + tchips(MATCH.wins);
+  h += '<div class="mstat">' + MATCH.len + '勝先取 ・ ' + (done ? 'おわり' : 'つぎは ' + (MATCH.game + 2) + 'ゲームめ（お題は ' + esc(pname((MATCH.first + MATCH.game + 1) % 2)) + '）') + '</div>';
+  var nextLbl = done ? 'もう一回（はじめから）' : '次のゲームへ';
+  if (MODE === 'cpu') {
+    h += '<button class="big" id="rNext">' + nextLbl + '</button><button class="link" id="rLeave">タイトルへ</button>';
+    c.innerHTML = h;
+    on('rNext', function(){ if (done) startCpuMatch(); else { MATCH.game++; nextGame(); } });
+    on('rLeave', function(){ leave(); });
+    return;
+  }
+  h += '<div class="want"><div class="' + (NET.want[me] ? 'on' : '') + '">' + (NET.want[me] ? '✓ あなた OK' : 'あなた まだ') + '</div><div class="' + (NET.want[them] ? 'on them' : '') + '">' + (NET.want[them] ? '🙋 ' + esc(pname(them)) + (done ? ' もう一回したい！' : ' 次いこう！') : esc(pname(them)) + ' 考え中') + '</div></div>';
+  h += '<button class="big" id="rWant">' + (NET.want[me] ? '待ってるよ…' : nextLbl) + '</button><button class="link" id="rLeave">部屋を出る</button>';
+  c.innerHTML = h;
+  on('rWant', function(){ if (NET.want[me]) return; NET.want[me] = true; send({t:'want'}); renderResult(); checkWant(); });
   on('rLeave', function(){ leave(); });
 }
 function tchips(w){ return '<div class="tchips"><span style="background:#fdeee8;color:var(--p0d)">' + esc(pname(0)) + ' ' + w[0] + '勝</span><span style="background:#e9f1fc;color:var(--p1d)">' + esc(pname(1)) + ' ' + w[1] + '勝</span></div>'; }
@@ -925,12 +988,6 @@ function showResult(){
   renderResult(); show('res');
   if (MODE === 'solo') sfx(NEWBEST ? 'best' : 'end');
   else { var meLost = MODE === 'net' ? loser === NET.me : loser === 0; sfx(meLost ? 'lose' : 'win'); if (!meLost) vib([20, 60, 20]); }
-}
-function reSearch(topic){
-  if (MODE !== 'net') { $('topic').value = topic; startLocal(); return; }
-  if (NET.role !== 'host') return;
-  send({t:'reload', topic:topic});
-  NET.ready = false; NET.inGame = true; openLobbyHost(topic, true);
 }
 
 /* ---------- reactions + chat ---------- */
@@ -983,8 +1040,8 @@ function wireConn(conn){
   conn.on('close', function(){ if (!NET || NET.leaving) return; NET.open = false; toast('相手がいなくなったよ'); setTimeout(function(){ if (NET && !NET.open) { state = 'idle'; NET = null; setNetClass(); show('home'); } }, 1600); });
 }
 function makeRoom(){
-  var topic = getTopic(); getName();
-  NET = {role:'host', me:0, names:['', ''], wins:[0, 0], want:[false, false], open:false, ready:false, piecesDone:false, inGame:false};
+  getName(); MATCH = null;
+  NET = {role:'host', me:0, names:['', ''], want:[false, false], open:false, ready:false};
   NET.names[0] = getName(); setNetClass();
   var tries = 0;
   function attempt(){
@@ -1006,39 +1063,30 @@ function makeRoom(){
       conn.on('open', function(){ NET.open = true; wireConn(conn); send({t:'hello', name:NET.names[0]}); lobbyStatus(); });
     });
   }
-  openLobbyHost(topic, false);
+  openLobbyHost();
   attempt();
 }
 function roomReady(no){ $('roomNo').textContent = no; $('roomTagNo').textContent = '部屋 ' + no; lobbyStatus(); }
-function openLobbyHost(topic, again){
+function openLobbyHost(){
   $('lobTop').textContent = '部屋ばんごう'; $('roomNo').classList.remove('hidden'); $('copyNo').classList.remove('hidden');
-  $('lobThumbs').innerHTML = ''; $('lobGo').classList.add('hidden'); $('lobRe').classList.add('hidden');
-  NET.piecesDone = false; show('lobby'); lobbyStatus('「' + topic + '」をさがしてるよ…');
-  searchPieces(topic, {
-    progress:function(pc){ $('lobThumbs').appendChild(thumbCanvas(pc)); },
-    done:function(){ fillBlobs(); NET.piecesDone = true; $('lobGo').classList.remove('hidden'); $('lobRe').classList.remove('hidden'); lobbyStatus(); if (NET.open) sendPieces(); }
-  });
+  $('lobLenBox').classList.remove('hidden'); $('lobLenTx').classList.add('hidden'); drawLen();
+  $('lobGo').classList.remove('hidden'); show('lobby'); lobbyStatus();
 }
 function lobbyStatus(t){
   if (!NET) return;
   if (t) { $('lobTx').textContent = t; return; }
-  if (NET.role === 'host') {
-    if (!NET.piecesDone) return;
-    $('lobTx').textContent = NET.open ? (NET.ready ? '🙌 ' + (NET.names[1] || '相手') + 'が来たよ！ はじめてね' : (NET.names[1] || '相手') + 'にパーツを送ってるよ…') : '相手にばんごうを教えてね';
-  }
+  if (NET.role === 'host') $('lobTx').textContent = NET.open ? '🙌 ' + (NET.names[1] || '相手') + 'が来たよ！ はじめてね' : '相手にばんごうを教えてね';
 }
 $('copyNo').onclick = function(){ var t = $('roomNo').textContent; try { navigator.clipboard.writeText(t).then(function(){ toast('コピーしたよ'); }, function(){ toast(t); }); } catch(e) { toast(t); } };
-$('lobRe').onclick = function(){ if (NET && NET.role === 'host') reSearch(TOPIC); };
 $('lobGo').onclick = function(){
   if (!NET) return;
   if (!NET.open) { toast('相手を待ってね'); return; }
-  if (!NET.ready) { toast('パーツを送ってるよ。ちょっと待ってね'); return; }
-  NET.inGame = true; NET.want = [false, false]; newRound(roundNo % 2);
+  startNetMatch();
 };
 $('lobBack').onclick = function(){ job++; leave(); };
 function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null}; }
 function sendPieces(){
-  NET.ready = false; lobbyStatus();
+  NET.ready = false;
   send({t:'pstart', n:POOL.length, topic:TOPIC});
   POOL.forEach(function(pc, i){ send({t:'pc', i:i, d:pieceData(pc)}); });
   send({t:'pend', n:POOL.length});
@@ -1046,22 +1094,23 @@ function sendPieces(){
 function joinRoom(){
   var no = ($('joinNo').value || '').replace(/\D/g, '');
   if (no.length !== 4) { toast('4けたのばんごうを入れてね'); return; }
-  NET = {role:'guest', me:1, names:['', ''], wins:[0, 0], want:[false, false], open:false, room:no, inPieces:null};
+  MATCH = null;
+  NET = {role:'guest', me:1, names:['', ''], want:[false, false], open:false, room:no, inPieces:null};
   NET.names[1] = getName(); setNetClass();
   $('roomTagNo').textContent = '部屋 ' + no;
   $('lobTop').textContent = '部屋 ' + no; $('roomNo').classList.add('hidden'); $('copyNo').classList.add('hidden');
-  $('lobThumbs').innerHTML = ''; $('lobGo').classList.add('hidden'); $('lobRe').classList.add('hidden');
+  $('lobGo').classList.add('hidden'); $('lobLenBox').classList.add('hidden'); $('lobLenTx').classList.add('hidden');
   show('lobby'); lobbyStatus('つないでるよ…');
   if (FAKE) {
     var ch = fakeChannel(no, 'guest'); NET.peer = {destroy:function(){ ch.close(); }};
-    ch.on('open', function(){ NET.open = true; wireConn(ch); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ パーツを待ってるよ…'); });
+    ch.on('open', function(){ NET.open = true; wireConn(ch); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ 部屋の人がはじめるのを待ってるよ'); show('lobby'); });
     ch.raw.postMessage({to:'host', k:'join'});
     return;
   }
   var peer = new Peer(); NET.peer = peer;
   peer.on('open', function(){
     var conn = peer.connect(PREFIX + no, {reliable:true});
-    conn.on('open', function(){ NET.open = true; wireConn(conn); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ パーツを待ってるよ…'); });
+    conn.on('open', function(){ NET.open = true; wireConn(conn); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ 部屋の人がはじめるのを待ってるよ'); show('lobby'); });
   });
   peer.on('error', function(err){
     if (!NET) return;
@@ -1082,18 +1131,26 @@ function onNet(m){
   if (!NET || !m || typeof m !== 'object') return;
   var host = NET.role === 'host', them = 1 - NET.me;
   switch (m.t) {
-    case 'hello': NET.names[them] = String(m.name || '').slice(0, 8); lobbyStatus(); if (host && NET.piecesDone) sendPieces(); updHud(); break;
+    case 'hello': NET.names[them] = String(m.name || '').slice(0, 8); lobbyStatus(); if (host) send({t:'len', n:S.matchLen}); updHud(); break;
+    case 'len': if (!host) { $('lobLenTx').textContent = (m.n | 0) + '勝先取'; $('lobLenTx').classList.remove('hidden'); } break;
+    case 'match': if (!host) { MATCH = {len:m.len | 0, first:m.first | 0, game:0, wins:[0, 0]}; toss(nextGame); } break;
+    case 'next': if (!host) { MATCH.game = m.game | 0; NET.want = [false, false]; nextGame(); } break;
+    case 'topic': $('waitTop').textContent = 'お題は「' + String(m.topic || '').slice(0, 30) + '」！'; $('waitTx2').textContent = pname(them) + 'がパーツをさがしてるよ…'; break;
     case 'full': toast('その部屋はいっぱいだよ'); leave(); break;
     case 'bye': NET.leaving = true; toast('相手が部屋を出たよ'); setTimeout(function(){ state = 'idle'; NET = null; setNetClass(); show('home'); }, 1400); break;
     case 'chat': chatLine(them, String(m.s || '').slice(0, 40)); sfx('blip'); break;
     case 'rx': bubble(them, m.k | 0); sfx('pop'); break;
     case 'fx': if (!host) { sfx(m.k, m.v); if (m.k === 'land') vib(8); } break;
     // guest side
-    case 'reload': if (!host) { TOPIC = m.topic || TOPIC; $('lobThumbs').innerHTML = ''; show('lobby'); lobbyStatus('「' + TOPIC + '」のパーツをさがしなおしてるよ…'); } break;
-    case 'pstart': if (!host) { NET.inPieces = new Array(m.n); TOPIC = m.topic || ''; $('lobThumbs').innerHTML = ''; show('lobby'); lobbyStatus('パーツを受け取ってるよ… 0/' + m.n); } break;
-    case 'pc': if (!host && NET.inPieces) { NET.inPieces[m.i] = m.d; var got = NET.inPieces.filter(Boolean).length; lobbyStatus('パーツを受け取ってるよ… ' + got + '/' + NET.inPieces.length); } break;
-    case 'pend': if (!host && NET.inPieces) { var arr = NET.inPieces; NET.inPieces = null; buildPieces(arr).then(function(ps){ POOL = ps; CREDITS = ps.filter(function(p){ return p.credit; }).map(function(p){ return p.credit; }); $('credBtn').classList.toggle('hidden', !CREDITS.length); ps.forEach(function(pc){ $('lobThumbs').appendChild(thumbCanvas(pc)); }); lobbyStatus('準備OK！ ' + (NET.names[0] || '部屋の人') + 'が始めるのを待ってるよ'); send({t:'ready'}); }); } break;
-    case 'round': if (!host) { NET.wins = m.wins || NET.wins; NET.want = [false, false]; newRound(m.st | 0); } break;
+    // pieces from whoever picked the topic (either side)
+    case 'pstart': NET.inPieces = new Array(m.n); TOPIC = m.topic || ''; $('waitThumbs').innerHTML = ''; $('waitTx2').textContent = 'パーツを受け取ってるよ… 0/' + m.n; break;
+    case 'pc': if (NET.inPieces) { NET.inPieces[m.i] = m.d; $('waitTx2').textContent = 'パーツを受け取ってるよ… ' + NET.inPieces.filter(Boolean).length + '/' + NET.inPieces.length; } break;
+    case 'pend': if (NET.inPieces) { var arr = NET.inPieces; NET.inPieces = null; buildPieces(arr).then(function(ps){
+        POOL = ps; CREDITS = ps.filter(function(p){ return p.credit; }).map(function(p){ return p.credit; }); $('credBtn').classList.toggle('hidden', !CREDITS.length);
+        ps.forEach(function(pc){ $('waitThumbs').appendChild(thumbCanvas(pc)); });
+        if (host) newRound(chooser()); else send({t:'ready'});
+      }); } break;
+    case 'round': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; NET.want = [false, false]; newRound(m.st | 0); } break;
     case 'turn': if (!host) { turnP = m.tp | 0; count = m.n | 0; topY = m.top; if (POOL[m.pi]) beginAim(m.pi, m.sc); } break;
     case 's': if (!host) applySnap(m); break;
     case 'add': if (!host) {
@@ -1101,15 +1158,83 @@ function onNet(m){
       setAng(b, m.a); setPos(b, m.x, b.position.y);
       b.plugin.id = m.id; b.plugin.tg = {x:b.position.x, y:b.position.y, a:b.angle}; byId[m.id] = b; placed.push(b); cur = null; state = 'drop'; hintOn = false; updHud(); sfx('drop');
     } break;
-    case 'over': if (!host) { NET.wins = m.wins || NET.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); } break;
+    case 'over': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); } break;
     case 'want': NET.want[them] = true; if (state === 'over') renderResult(); checkWant(); break;
     // host side
-    case 'ready': if (host) { NET.ready = true; lobbyStatus(); if (NET.inGame) newRound(roundNo % 2); } break;
+    case 'ready': if (host) newRound(chooser()); break;
     case 'aim': if (host && turnP === 1 && state === 'aim') { curX = +m.x || 0; curAng = +m.a || 0; clampX(); } break;
     case 'drop': if (host && turnP === 1 && state === 'aim') { curX = +m.x || 0; curAng = +m.a || 0; clampX(); NET_DROP = true; doDrop(); NET_DROP = false; } break;
   }
 }
-function checkWant(){ if (NET && NET.role === 'host' && NET.want[0] && NET.want[1] && state === 'over') { NET.want = [false, false]; newRound(roundNo % 2); } }
+function checkWant(){
+  if (!(NET && NET.role === 'host' && NET.want[0] && NET.want[1] && state === 'over')) return;
+  NET.want = [false, false];
+  if (matchOver()) startNetMatch();
+  else { MATCH.game++; send({t:'next', game:MATCH.game}); nextGame(); }
+}
+
+/* ---------- matches (CPU and net): first to N wins, random first player, the topic picker alternates ---------- */
+function chooser(){ return (MATCH.first + MATCH.game) % 2; }
+function startCpuMatch(){
+  NET = null; setNetClass();
+  MATCH = {len:S.matchLen, first:Math.random() < 0.5 ? 0 : 1, game:0, wins:[0, 0]};
+  toss(nextGame);
+}
+function startNetMatch(){
+  MATCH = {len:S.matchLen, first:Math.random() < 0.5 ? 0 : 1, game:0, wins:[0, 0]};
+  NET.want = [false, false];
+  send({t:'match', len:MATCH.len, first:MATCH.first});
+  toss(nextGame);
+}
+// the coin toss: names flicker, then land on the first player
+function toss(then){
+  state = 'idle'; show('toss'); $('tossLen').textContent = MATCH.len + '勝先取';
+  var n = 0, steps = 14, el = $('tossName'), f = MATCH.first;
+  $('tossSub').textContent = '';
+  (function tick(){
+    var p = (f + steps - n) % 2;
+    el.textContent = pname(p); el.style.color = p ? 'var(--p1d)' : 'var(--p0d)'; el.style.borderColor = p ? 'var(--p1)' : 'var(--p0)';
+    if (n < steps) { sfx('tap'); n++; setTimeout(tick, 60 + n * n * 1.6); }
+    else { sfx('next'); $('tossSub').textContent = 'お題も ' + pname(f) + ' からきめるよ'; setTimeout(then, 1500); }
+  })();
+}
+var CPU_TOPICS = ['どうぶつ','くだもの','やさい','のりもの','おかし','恐竜','楽器','とり','さかな','むし','はな','いす','くるま','パン','おもちゃ','ねこ','いぬ'];
+function nextGame(){
+  state = 'idle'; NEWBEST = false;
+  var c = chooser(), label = (MATCH.game + 1) + 'ゲームめ ・ ';
+  if (MODE === 'cpu') {
+    if (c === 0) { var mePick = function(topic){ runSearch(topic, {mine:true, label:'', done:function(){ newRound(0); }, back:function(){ openPick(label, mePick); }}); }; openPick(label, mePick); }
+    else {
+      MATCH.used = MATCH.used || [];
+      var left = CPU_TOPICS.filter(function(t){ return MATCH.used.indexOf(t) < 0; }); if (!left.length) { MATCH.used = []; left = CPU_TOPICS; }
+      var t = left[Math.floor(Math.random() * left.length)]; MATCH.used.push(t);
+      runSearch(t, {mine:false, label:'CPUのお題は ', done:function(){ newRound(1); }});
+    }
+    return;
+  }
+  if (c === NET.me) {
+    openPick(label, function(topic){
+      runSearch(topic, {mine:true, label:'', back:function(){ nextGame(); }, done:function(){
+        // I picked: send the pieces; the host starts the game when both sides have them
+        sendPieces();
+        show('waitL'); $('waitTop').textContent = 'お題は「' + TOPIC + '」'; $('waitTx2').textContent = pname(1 - NET.me) + 'にパーツを送ってるよ…'; $('waitThumbs').innerHTML = '';
+      }});
+    });
+  } else {
+    show('waitL'); $('waitThumbs').innerHTML = '';
+    $('waitTop').textContent = label + pname(c) + 'がお題を考え中…'; $('waitTx2').textContent = '';
+  }
+}
+var PICKCB = null;
+function openPick(label, cb){
+  PICKCB = cb; show('pick');
+  $('pickTx').textContent = 'あなたがお題をきめる番'; $('pickSub').textContent = label + MATCH.len + '勝先取';
+  $('pickSlot').appendChild($('topicBlock'));
+}
+function pickGo(){ var t = getTopic(); var cb = PICKCB; if (cb) cb(t); }
+$('pickGo').onclick = pickGo;
+$('pickBack').onclick = function(){ leave(); };
+$('waitBack').onclick = function(){ leave(); };
 function applySnap(m){
   var seen = {};
   (m.b || []).forEach(function(r){ var b = byId[r[0]]; if (!b) return; seen[r[0]] = 1; b.plugin.tg = {x:r[1], y:r[2], a:r[3]}; });
@@ -1373,8 +1498,8 @@ function cpuStep(dt){
   if (c.hold > 0.35) { CPU = null; CPU_DROP = true; doDrop(); CPU_DROP = false; }
 }
 
-window.__tb = {jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); newRound(0); }, drop:doDrop, rotate:rotate,
-  state:function(){ return {state:state, count:count, turnP:turnP, placed:placed.length, loser:loser, mode:MODE, net:NET ? {role:NET.role, open:NET.open, ready:NET.ready, room:NET.room, wins:NET.wins} : null}; },
+window.__tb = {jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
+  state:function(){ return {state:state, count:count, turnP:turnP, placed:placed.length, loser:loser, mode:MODE, net:NET ? {role:NET.role, open:NET.open, room:NET.room, wins:MATCH ? MATCH.wins : null} : null, match:MATCH}; },
   setX:function(x){ curX = x; aimSend(true); }, setPoolBlobs:function(n){ POOL = []; for (var i = 0; i < n; i++) POOL.push(makeBlob(i)); POOL = POOL.filter(Boolean); }};
 requestAnimationFrame(step);
 })();
