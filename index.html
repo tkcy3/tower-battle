@@ -33,11 +33,13 @@ body.cel #hud,body.cel #quit,body.cel #gSet,body.cel #side,body.cel #waitTx,body
 input.tx{width:100%;font-size:20px;padding:12px 14px;border-radius:16px;border:2.5px solid var(--line);outline:none;background:#fff;min-width:0}
 input.tx:focus{border-color:var(--p1)}
 /* home */
-#home{background:rgba(207,234,246,.82);justify-content:flex-end;gap:12px;overflow-y:auto}
-#home h1{margin:0 0 auto;padding-top:7vh;font-size:52px;font-weight:900;letter-spacing:2px;text-align:center;line-height:1.05;color:var(--ink)}
+#home{background:rgba(207,234,246,.82);justify-content:flex-start;gap:12px;overflow-y:auto;padding-top:calc(env(safe-area-inset-top) + 66px)}
+#home h1{margin:0 0 4px;font-size:clamp(40px,12.5vw,54px);font-weight:900;letter-spacing:2px;text-align:center;line-height:1.05;color:var(--ink);flex:none}
+#home .card{flex:none}
+#homeSpace{flex:1 1 auto;min-height:6px}
 #home h1 small{display:block;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:3px;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
-.chips button{font-size:15px;padding:6px 12px;border-radius:999px;border-width:2px}
+.chips button{font-size:14px;padding:6px 11px;border-radius:999px;border-width:2px}
 .src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);flex-wrap:wrap}
 .src button{font-size:14px;padding:6px 11px;border-radius:999px;border-width:2px}
 .srcLbl{width:100%;font-size:13px}
@@ -185,7 +187,7 @@ body:not(.play) #gSet{display:none}
     <div id="topicHome"><div id="topicBlock" style="display:flex;flex-direction:column;gap:12px">
       <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
       <div class="chips" id="chips"></div>
-      <div class="src" id="srcSeg"><span class="srcLbl">画像のさがし先（いくつでも）</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
+      <div class="src" id="srcSeg"><span class="srcLbl">画像のさがし先（いくつでも）</span><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button><button data-s="wiki">ウィキメディア</button></div>
     </div></div>
     <div id="lenBox" class="hidden"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lenSeg"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div><div class="lenNote">先手はランダム。お題は先手から交代できめるよ</div></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
@@ -195,9 +197,8 @@ body:not(.play) #gSet{display:none}
       <div id="joinBox" class="hidden" style="display:flex;gap:8px"><input id="joinNo" class="tx" type="tel" inputmode="numeric" maxlength="4" placeholder="ばんごう4けた" autocomplete="off"><button id="joinGo" style="width:84px;font-size:17px">入る</button></div>
     </div>
   </div>
+  <div id="homeSpace"></div>
   <button class="big" id="start">はじめる</button>
-  <button class="sub" id="photoBtn">📷 写真でつくる</button>
-  <input id="photo" type="file" accept="image/*" multiple class="hidden">
   <div class="foot"><button class="link" id="ver"></button><button class="link hidden" id="credBtn">画像のクレジット</button></div>
 </div>
 
@@ -307,6 +308,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.9.1', d:'2026-11-28', items:['📐 ホーム画面を作りなおしました。「ひとり・CPU・ネット対戦」を切りかえても、ボタンの位置が動きません','🖼️ 画像のさがし先の並びを「いらすとや・えもじ・ウィキメディア」にしました','📷 「写真でつくる」はなくしました']},
   {v:'0.9.0', d:'2026-11-28', items:['🎉 勝ったときに、紙ふぶきと「かち！」が出るようになりました。星がたまっていくと、優勝まであといくつか分かります','🏆 優勝したときは、トロフィーと花火とファンファーレでお祝い！ 花火は結果の画面のうしろでもしばらく続きます','🥈 負けても「じゅんゆうしょう！」のメダルがもらえます。ひとりで遊ぶときも、さいこう記録をお祝いします']},
   {v:'0.8.0', d:'2026-11-28', items:['💬 CPU対戦でもリアクションとチャットができるようになりました','🤖 CPUも、うまく積めたとき・ゆれたとき・落ちたときなどに、リアクションやチャットをします。話しかけると返事もします']},
   {v:'0.7.1', d:'2026-11-28', items:['📐 「ひとり・CPU・ネット対戦」のボタンを、絵と文字の2段にして見やすくしました','✏️ ネット対戦の名前の欄に「あなたの名前」と出るようにしました','🖼️ 画像のさがし先は、前に選んだ組み合わせをそのまま覚えています']},
@@ -355,7 +357,7 @@ $('chips').innerHTML = CHIPS.map(function(c){ return '<button>' + c[0] + '</butt
 $('chips').addEventListener('click', function(e){ if (e.target.tagName === 'BUTTON') $('topic').value = e.target.textContent; });
 function topicQuery(t){ for (var i = 0; i < CHIPS.length; i++) if (CHIPS[i][0] === t) return CHIPS[i][1]; return t; }
 if (S.topic) $('topic').value = S.topic;
-var SRC_NAME = {wiki:'ウィキ', ira:'いらすとや', emo:'えもじ'};
+var SRC_NAME = {ira:'いらすとや', emo:'えもじ', wiki:'ウィキ'};
 if (!Array.isArray(S.srcs)) S.srcs = [S.src === 'ira' ? 'ira' : 'wiki'];
 S.srcs = S.srcs.filter(function(x){ return SRC_NAME[x]; }); if (!S.srcs.length) S.srcs = ['wiki'];
 function drawSrc(){ Array.prototype.forEach.call($('srcSeg').querySelectorAll('button'), function(b){ b.classList.toggle('on', S.srcs.indexOf(b.dataset.s) >= 0); }); }
@@ -374,7 +376,6 @@ function setMode(m){
   $('topicHome').classList.toggle('hidden', m !== 'solo');
   $('lenBox').classList.toggle('hidden', m !== 'cpu');
   $('start').classList.toggle('hidden', m === 'net');
-  $('photoBtn').classList.toggle('hidden', m !== 'solo');
 }
 // 何勝先取
 if ([1, 3, 5].indexOf(S.matchLen) < 0) S.matchLen = 3;
@@ -387,8 +388,6 @@ function getTopic(){ var t = ($('topic').value || '').trim(); if (!t) { t = CHIP
 function getName(){ var n = ($('myName').value || '').trim().slice(0, 8); S.name = n; save(); return n || 'ななし'; }
 $('topic').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('topic').blur(); if (!$('pick').classList.contains('hidden')) pickGo(); else if (MODE === 'solo') startLocal(); } });
 $('start').onclick = function(){ if (MODE === 'cpu') startCpuMatch(); else startLocal(); };
-$('photoBtn').onclick = function(){ $('photo').click(); };
-$('photo').onchange = function(){ var fs = Array.prototype.slice.call(this.files || []); this.value = ''; if (fs.length) startPhotos(fs); };
 $('credBtn').onclick = showCredits;
 $('credClose').onclick = function(){ $('cred').classList.add('hidden'); };
 $('joinBtn').onclick = function(){ $('joinBox').classList.toggle('hidden'); if (!$('joinBox').classList.contains('hidden')) $('joinNo').focus(); };
