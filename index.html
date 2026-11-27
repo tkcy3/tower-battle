@@ -429,6 +429,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.13.4', d:'2026-11-28', items:['🔟 パーツはいつも最大10こにそろえました。なかまたちだけのときは、13しゅるいの中からランダムに10こ出てきます（「さがしなおす」で入れかわります）']},
   {v:'0.13.3', d:'2026-11-28', items:['✏️ なかまたちのふちの線と顔の大きさを、どのなかまも同じにそろえました']},
   {v:'0.13.2', d:'2026-11-28', items:['🔀 パーツのもとの並びを「なかまたち・いらすとや・えもじ・ウィキメディア」にしました']},
   {v:'0.13.1', d:'2026-11-28', items:['🙂 「なかまたち」を、お題ではなく「パーツのもと」（いらすとや・えもじ・ウィキメディアのならび）で選ぶようにしました。なかまたちだけなら、お題はいりません。ほかといっしょに選ぶと、お題の画像になかまたちがまざります','🫛 みどりのなかまの左右が欠けていたのを直しました']},
@@ -830,7 +831,7 @@ var SOURCES = {wiki:{cand:candWiki, load:loadWiki}, ira:{cand:candIra, load:load
 function searchPieces(topic, cb){
   var my = ++job; POOL = []; TOPIC = topic;
   if (topic === FRIENDS) {
-    var fp = friendPieces(), fi = 0;
+    var fp = friendPieces().sort(function(){ return Math.random() - 0.5; }).slice(0, TARGET), fi = 0;   // at most 10, like any topic
     (function next(){ if (my !== job) return; if (fi < fp.length) { POOL.push(fp[fi++]); cb.progress(POOL[POOL.length - 1]); setTimeout(next, 60); } else cb.done(); })();
     return;
   }
@@ -909,7 +910,7 @@ function runSearch(topic, ctx){
     progress:function(pc){ $('thumbs').appendChild(thumbCanvas(pc)); $('loadN').textContent = POOL.length; if (POOL.length >= 4 && ctx.mine) $('loadGo').classList.remove('hidden'); },
     done:function(){
       $('loadTx').textContent = (ctx.label || '') + (POOL.length ? '「' + topic + '」がそろったよ' : '「' + topic + '」は見つからなかったよ');
-      if (ctx.mine) { $('loadGo').classList.remove('hidden'); $('loadRe').classList.toggle('hidden', topic === FRIENDS); }
+      if (ctx.mine) { $('loadGo').classList.remove('hidden'); $('loadRe').classList.remove('hidden'); }
       else setTimeout(function(){ if (LOADCTX === ctx) loadDone(); }, 900);
     }
   });
