@@ -155,6 +155,10 @@ body:not(.play) #gSet{display:none}
 .chg b{display:block;font-size:15px;font-weight:900;margin-bottom:2px}
 .chg ul{margin:0;padding-left:1.2em}
 #ver.new{color:var(--p0d);text-decoration:none;font-weight:900}
+#altB{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 118px);transform:translate(-50%,-10px) scale(.6);background:rgba(255,253,247,.95);color:var(--ink);border:3px solid var(--accent);padding:8px 18px;border-radius:999px;font-size:19px;font-weight:900;white-space:nowrap;opacity:0;pointer-events:none;z-index:40;box-shadow:0 4px 0 rgba(59,74,84,.12)}
+#altB.on{animation:altPop 2.6s ease forwards}
+@keyframes altPop{0%{opacity:0;transform:translate(-50%,-10px) scale(.6)}12%{opacity:1;transform:translate(-50%,0) scale(1.08)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(.96)}}
+body.cel #altB{display:none}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 96px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-size:15px;max-width:90vw;text-align:center;transition:opacity .4s;pointer-events:none;z-index:50}
 </style>
 </head>
@@ -268,7 +272,7 @@ body:not(.play) #gSet{display:none}
   <div class="chg" id="chgBody"></div>
   <button class="sub" id="chgC">戻る</button>
 </div></div>
-<div id="toast" style="opacity:0"></div>
+<div id="toast" style="opacity:0"></div><div id="altB"></div>
 
 <script>(function(global,factory){typeof exports==="object"&&typeof module!=="undefined"?factory(exports):typeof define==="function"&&define.amd?define(["exports"],factory):(global=typeof globalThis!=="undefined"?globalThis:global||self,factory(global.planck={}))})(this,function(exports2){"use strict";
 /**
@@ -308,6 +312,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.10.0', d:'2026-11-28', items:['☀️ 高く積むほど、とりさん・おひさま・ききゅう・くも・ひこうき・にじ・よぞら・うちゅうが見えてくるようになりました','🎈 あたらしい高さにとどくと、お知らせが出ます。結果画面にも、どこまでとどいたかが出ます','🖼️ アイコンを新しくしました']},
   {v:'0.9.2', d:'2026-11-28', items:['✏️ 名前の入力らんの見本を「例）たかし」にしました']},
   {v:'0.9.1', d:'2026-11-28', items:['📐 ホーム画面を作りなおしました。「ひとり・CPU・ネット対戦」を切りかえても、ボタンの位置が動きません','🖼️ 画像のさがし先の並びを「いらすとや・えもじ・ウィキメディア」にしました','📷 「写真でつくる」はなくしました']},
   {v:'0.9.0', d:'2026-11-28', items:['🎉 勝ったときに、紙ふぶきと「かち！」が出るようになりました。星がたまっていくと、優勝まであといくつか分かります','🏆 優勝したときは、トロフィーと花火とファンファーレでお祝い！ 花火は結果の画面のうしろでもしばらく続きます','🥈 負けても「じゅんゆうしょう！」のメダルがもらえます。ひとりで遊ぶときも、さいこう記録をお祝いします']},
@@ -873,7 +878,7 @@ function newRound(starter){
     world.on('begin-contact', onContact);
     world.createBody({type:'static', position:PL.Vec2(0, (GROUND_Y + 20) / PS)}).createFixture(PL.Box(STAGE_W / 2 / PS, 20 / PS), {friction:CFG.gfric});
   } else world = null;
-  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; cur = null;
+  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
   if (isHost()) {
@@ -899,6 +904,7 @@ function beginAim(pi, sc){
   camTarget = Math.min(baseCam(), topY - 300);
   cur = makeBody(pi, sc); curX = 0; curAng = angNow = 0; setAng(cur, 0); placeCur();
   state = 'aim'; updHud();
+  altCheck();
 }
 function updHud(){
   var t = $('turn'), col;
@@ -959,6 +965,7 @@ function gameOver(who){
   updHud();
 }
 var NEWBEST = false;
+function altLine(){ if (!altLv) return ''; var a = ALT[altLv - 1]; return '<div class="mstat">' + a.t.split(' ')[0] + ' ' + a.r + 'まで積めたよ</div>'; }
 
 /* ---------- result ---------- */
 function miniThumbs(){ return '<div class="mini" id="miniT"></div>'; }
@@ -968,7 +975,7 @@ function renderResult(){
   var c = $('resCard'), h = '', on = function(id, f){ var e = $(id); if (e) e.onclick = f; };
   if (MODE === 'solo') {
     var b = S.best[TOPIC] || 0;
-    h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (NEWBEST ? '🏆 さいこう記録！' : '🏆 さいこう ' + b + ' こ') + ' ・「' + esc(TOPIC) + '」</div>';
+    h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (NEWBEST ? '🏆 さいこう記録！' : '🏆 さいこう ' + b + ' こ') + ' ・「' + esc(TOPIC) + '」</div>' + altLine();
     h += '<button class="big" id="rAgain">もう一回</button>';
     if (TOPIC !== '写真') h += '<div class="prow">' + miniThumbs() + '<button id="rRe">🔄 パーツをさがしなおす</button></div>';
     h += '<button class="link" id="rHome">お題をかえる</button>';
@@ -982,7 +989,7 @@ function renderResult(){
   var champ = done ? (MATCH.wins[me] >= MATCH.len) : null;
   if (done) h += '<div id="resBig" style="color:' + (champ ? 'var(--p0d)' : 'var(--p1d)') + '">' + (champ ? '🎉 あなたの優勝！' : esc(pname(them)) + 'の優勝…') + '</div>';
   else h += '<div id="resBig" style="color:' + (win ? 'var(--p0d)' : 'var(--p1d)') + '">' + (win ? '🏆 あなたの勝ち！' : 'ざんねん… ' + esc(pname(them)) + 'の勝ち') + '</div>';
-  h += '<div id="resSub">' + esc(pname(loser)) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>' + tchips(MATCH.wins);
+  h += '<div id="resSub">' + esc(pname(loser)) + 'が落としちゃった ・ 🧱 ' + count + ' こ</div>' + altLine() + tchips(MATCH.wins);
   h += '<div class="mstat">' + MATCH.len + '勝先取 ・ ' + (done ? 'おわり' : 'つぎは ' + (MATCH.game + 2) + 'ゲームめ（お題は ' + esc(pname((MATCH.first + MATCH.game + 1) % 2)) + '）') + '</div>';
   var nextLbl = done ? 'もう一回（はじめから）' : '次のゲームへ';
   if (MODE === 'cpu') {
@@ -1310,19 +1317,149 @@ function drawBody(b){
   ctx.drawImage(pl.pc.cv, pl.off.x, pl.off.y, pl.pc.w * pl.sc, pl.pc.h * pl.sc);
   ctx.restore();
 }
+/* ---------- sky: the higher the tower, the more you can see ---------- */
+// h = tower height (world units above the island) needed to reach each sight
+var ALT = [
+  {h:110, k:'bird', t:'🐦 とりさんの高さ！', r:'とりさんの高さ'},
+  {h:230, k:'sun', t:'☀️ おひさまが見えた！', r:'おひさまの高さ'},
+  {h:370, k:'balloon', t:'🎈 ききゅうの高さ！', r:'ききゅうの高さ'},
+  {h:530, k:'cloud', t:'☁️ くものうえまで来た！', r:'くものうえ'},
+  {h:720, k:'plane', t:'✈️ ひこうきの高さ！', r:'ひこうきの高さ'},
+  {h:930, k:'rainbow', t:'🌈 にじの高さ！', r:'にじの高さ'},
+  {h:1160, k:'moon', t:'🌙 よぞらの高さ！', r:'よぞらの高さ'},
+  {h:1420, k:'space', t:'🚀 うちゅうまで来た！', r:'うちゅう'}
+];
+var altLv = 0, altT = [], NOW = 0;
+function altCheck(){
+  var h = GROUND_Y - topY, lv = altLv;
+  while (lv < ALT.length && h >= ALT[lv].h) { altT[lv] = NOW; lv++; }
+  if (lv > altLv) {
+    altLv = lv; var a = ALT[lv - 1], e = $('altB');
+    e.textContent = a.t; e.classList.remove('on'); void e.offsetWidth; e.classList.add('on');
+    sfx('sparkle'); setTimeout(function(){ sfx('next'); }, 160);
+  }
+}
+function altFade(i){ return altLv > i ? Math.min(1, (NOW - altT[i]) / 1.2) : 0; }
+function altY(i){ return GROUND_Y - ALT[i].h - 190; }   // where a sight sits: just above the tower top when it is reached
+var SKYG = null;
+function skyGrad(){
+  if (SKYG) return SKYG;
+  var g0 = GROUND_Y, g = ctx.createLinearGradient(0, g0 - 2200, 0, g0), st = [[0, '#cfeaf6'], [420, '#bde5f8'], [820, '#93d0f2'], [1080, '#a5ccef'], [1230, '#f9c79b'], [1350, '#ec9fae'], [1480, '#7463b0'], [1660, '#2a2f6e'], [2200, '#0c1134']];
+  st.forEach(function(s){ g.addColorStop(1 - s[0] / 2200, s[1]); });
+  return SKYG = g;
+}
+function cloudShape(x, y, s){
+  ctx.beginPath(); ctx.ellipse(x, y, 44 * s, 15 * s, 0, 0, 7); ctx.ellipse(x + 22 * s, y - 10 * s, 26 * s, 16 * s, 0, 0, 7); ctx.ellipse(x - 20 * s, y - 6 * s, 22 * s, 13 * s, 0, 0, 7); ctx.fill();
+}
+function cuteFace(x, y, s, a){
+  ctx.fillStyle = 'rgba(59,74,84,' + a + ')';
+  ctx.beginPath(); ctx.arc(x - 7 * s, y - 2 * s, 2.2 * s, 0, 7); ctx.arc(x + 7 * s, y - 2 * s, 2.2 * s, 0, 7); ctx.fill();
+  ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = 1.8 * s; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x - 4 * s, y + 3 * s); ctx.quadraticCurveTo(x, y + 7 * s, x + 4 * s, y + 3 * s); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,127,138,' + (0.5 * a) + ')';
+  ctx.beginPath(); ctx.ellipse(x - 12 * s, y + 3 * s, 3 * s, 2 * s, 0, 0, 7); ctx.ellipse(x + 12 * s, y + 3 * s, 3 * s, 2 * s, 0, 0, 7); ctx.fill();
+}
+function drawSky(t, top, bot, vw){
+  var near = function(y, r){ return y + r > top && y - r < bot; }, L = -vw / 2, R = vw / 2;
+  var topAlt = GROUND_Y - top, night = Math.max(0, Math.min(1, (topAlt - 1380) / 320));
+  ctx.fillStyle = skyGrad(); ctx.fillRect(-vw, top - 10, vw * 2, bot - top + 20);
+  // stars (night): pinned to the screen with a little drift
+  if (night > 0) {
+    for (var i = 0; i < 46; i++) {
+      var sx = L + ((i * 7919) % 1000) / 1000 * vw, sy = top + ((i * 4513) % 1000) / 1000 * (bot - top) * 0.8;
+      var tw = 0.55 + 0.45 * Math.sin(t * 2 + i * 1.7);
+      ctx.fillStyle = 'rgba(255,250,220,' + (night * tw * 0.9) + ')';
+      var r0 = i % 7 === 0 ? 2.6 : 1.4; ctx.beginPath(); ctx.arc(sx, sy, r0, 0, 7); ctx.fill();
+    }
+  }
+  // little clouds near the sea, always there
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  for (var c = 0; c < 4; c++) { var cy = GROUND_Y - 60 - c * 70, cx = ((c * 151) % 300) - 150 + Math.sin(t * 0.12 + c) * 12; if (near(cy, 30)) cloudShape(cx, cy, 0.8); }
+  var f, y, x;
+  // 0 birds
+  if ((f = altFade(0)) && near(y = altY(0), 60)) {
+    ctx.strokeStyle = 'rgba(59,74,84,' + (0.75 * f) + ')'; ctx.lineWidth = 2.6; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (var b = 0; b < 4; b++) {
+      x = ((t * 26 + b * 46) % (vw + 160)) - vw / 2 - 80; var by = y + [0, -16, 10, -6][b] + Math.sin(t * 1.3 + b) * 4, fl = Math.sin(t * 9 + b * 2) * 4;
+      ctx.beginPath(); ctx.moveTo(x - 9, by - 2 - fl); ctx.quadraticCurveTo(x - 4, by - 6 - fl, x, by); ctx.quadraticCurveTo(x + 4, by - 6 - fl, x + 9, by - 2 - fl); ctx.stroke();
+    }
+  }
+  // 1 sun: stays in the corner once you reach it, until the night comes
+  if ((f = altFade(1) * (1 - night))) {
+    var sx2 = R - 58, sy2 = top + 70;
+    ctx.save(); ctx.globalAlpha = f; ctx.translate(sx2, sy2);
+    ctx.fillStyle = 'rgba(255,214,90,.35)'; ctx.beginPath(); ctx.arc(0, 0, 42, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#ffc93c'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    for (var k = 0; k < 10; k++) { var an = k / 10 * Math.PI * 2 + t * 0.25; ctx.beginPath(); ctx.moveTo(Math.cos(an) * 36, Math.sin(an) * 36); ctx.lineTo(Math.cos(an) * 46, Math.sin(an) * 46); ctx.stroke(); }
+    ctx.fillStyle = '#ffd84d'; ctx.beginPath(); ctx.arc(0, 0, 29, 0, 7); ctx.fill();
+    ctx.restore(); cuteFace(sx2, sy2 + 2, 1.15, f);
+  }
+  // 2 hot-air balloon
+  if ((f = altFade(2)) && near(y = altY(2), 80)) {
+    x = L + 62 + Math.sin(t * 0.3) * 8; y += Math.sin(t * 0.8) * 5;
+    ctx.save(); ctx.globalAlpha = f;
+    ctx.strokeStyle = '#8a6a4a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 14, y + 20); ctx.lineTo(x - 7, y + 40); ctx.moveTo(x + 14, y + 20); ctx.lineTo(x + 7, y + 40); ctx.stroke();
+    ctx.fillStyle = '#c98a52'; roundRect(x - 9, y + 38, 18, 13, 3); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x, y, 27, 31, 0, 0, 7); ctx.save(); ctx.clip();
+    ['#ff8f70', '#ffd34d', '#6ea8ff', '#ffd34d', '#ff8f70'].forEach(function(cl, j){ ctx.fillStyle = cl; ctx.fillRect(x - 27 + j * 10.8, y - 32, 11, 64); });
+    ctx.restore(); ctx.restore(); cuteFace(x, y + 2, 0.9, f);
+  }
+  // 3 the cloud sea: a thick bank of fluffy clouds you climb through
+  if ((f = altFade(3)) && near(y = altY(3) + 70, 90)) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.85 * f) + ')';
+    for (var q = 0; q < 9; q++) { x = L - 30 + q * (vw + 60) / 8 + Math.sin(t * 0.2 + q) * 6; cloudShape(x, y + (q % 2) * 16, 1.3); }
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.6 * f) + ')'; ctx.fillRect(-vw, y + 10, vw * 2, 26);
+  }
+  // 4 airplane crossing the sky
+  if ((f = altFade(4)) && near(y = altY(4), 50)) {
+    x = ((t * 55) % (vw + 300)) - vw / 2 - 150;
+    ctx.save(); ctx.globalAlpha = f;
+    ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 30, y + 1); ctx.lineTo(x - 150, y + 1); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; roundRect(x - 30, y - 7, 64, 15, 7.5); ctx.fill();
+    ctx.fillStyle = '#ef8a6f'; ctx.beginPath(); ctx.moveTo(x - 28, y - 4); ctx.lineTo(x - 36, y - 20); ctx.lineTo(x - 22, y - 20); ctx.lineTo(x - 14, y - 4); ctx.fill();
+    ctx.fillStyle = '#dfe9f0'; ctx.beginPath(); ctx.moveTo(x - 4, y + 2); ctx.lineTo(x - 16, y + 16); ctx.lineTo(x - 6, y + 16); ctx.lineTo(x + 10, y + 2); ctx.fill();
+    ctx.fillStyle = '#6ea8ff'; for (var w = 0; w < 4; w++) { ctx.beginPath(); ctx.arc(x - 12 + w * 9, y - 1, 2.4, 0, 7); ctx.fill(); }
+    ctx.restore();
+  }
+  // 5 rainbow behind the tower
+  if ((f = altFade(5)) && near(y = altY(5) + 90, 200)) {
+    ctx.save(); ctx.globalAlpha = 0.55 * f; ctx.lineWidth = 9;
+    ['#ff8a8a', '#ffb86b', '#ffe27a', '#8fdc8a', '#7cc4f0', '#a99cf0'].forEach(function(cl, j){ ctx.strokeStyle = cl; ctx.beginPath(); ctx.arc(0, y, 175 - j * 9, Math.PI, 0); ctx.stroke(); });
+    ctx.restore();
+  }
+  // 6 moon: in the corner at night
+  if ((f = altFade(6) * Math.max(0.35, night))) {
+    var mx = L + 62, my = top + 175;
+    ctx.save(); ctx.globalAlpha = f;
+    ctx.fillStyle = 'rgba(255,244,190,.25)'; ctx.beginPath(); ctx.arc(mx, my, 40, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff0a8'; ctx.beginPath(); ctx.arc(mx, my, 27, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(230,205,120,.6)'; ctx.beginPath(); ctx.arc(mx + 9, my - 10, 4, 0, 7); ctx.arc(mx - 11, my + 11, 3, 0, 7); ctx.fill();
+    ctx.restore(); cuteFace(mx, my + 3, 1, f);
+  }
+  // 7 space: a ringed planet and a little rocket
+  if ((f = altFade(7))) {
+    var px = R - 68, py = top + 215 + Math.sin(t * 0.4) * 4;
+    ctx.save(); ctx.globalAlpha = f;
+    ctx.strokeStyle = '#ffd08a'; ctx.lineWidth = 5; ctx.beginPath(); ctx.ellipse(px, py, 44, 11, -0.35, Math.PI, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#b79cf0'; ctx.beginPath(); ctx.arc(px, py, 24, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(px, py, 44, 11, -0.35, 0, Math.PI); ctx.stroke();
+    var rx = L + 46 + ((t * 18) % 60), ry = top + 330 - ((t * 30) % (bot - top + 120)) + (bot - top) * 0.5;
+    if (ry < top - 40) ry += bot - top + 120;
+    ctx.translate(rx, ry); ctx.rotate(0.25);
+    ctx.fillStyle = '#ffb86b'; ctx.beginPath(); ctx.moveTo(-6, 18); ctx.lineTo(0, 30 + Math.sin(t * 20) * 4); ctx.lineTo(6, 18); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, -22); ctx.quadraticCurveTo(12, -8, 9, 18); ctx.lineTo(-9, 18); ctx.quadraticCurveTo(-12, -8, 0, -22); ctx.fill();
+    ctx.fillStyle = '#ef8a6f'; ctx.beginPath(); ctx.moveTo(-9, 8); ctx.lineTo(-16, 20); ctx.lineTo(-8, 18); ctx.fill(); ctx.beginPath(); ctx.moveTo(9, 8); ctx.lineTo(16, 20); ctx.lineTo(8, 18); ctx.fill();
+    ctx.fillStyle = '#6ea8ff'; ctx.beginPath(); ctx.arc(0, -3, 4.5, 0, 7); ctx.fill();
+    ctx.restore();
+  }
+}
 function draw(t){
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#cfeaf6'; ctx.fillRect(0, 0, cv.width, cv.height);
   var k = DPR * SC;
   ctx.setTransform(k, 0, 0, k, CW / 2 * DPR, -camTop * k);
   var vw = CW / SC, vh = CH / SC, top = camTop, bot = camTop + vh;
-  ctx.fillStyle = 'rgba(255,255,255,.9)';
-  for (var c = 0; c < 16; c++) {
-    var cy = -c * 250 + 40, cx = ((c * 137) % 360) - 180 + Math.sin(t * 0.12 + c) * 12;
-    var py = cy + (camTop + 400) * 0.35;
-    if (py < top - 60 || py > bot + 60) continue;
-    ctx.beginPath(); ctx.ellipse(cx, py, 44, 15, 0, 0, 7); ctx.ellipse(cx + 22, py - 10, 26, 16, 0, 0, 7); ctx.ellipse(cx - 20, py - 6, 22, 13, 0, 0, 7); ctx.fill();
-  }
+  NOW = t; drawSky(t, top, bot, vw);
   // low, wide island: flat grassy top (= the physics ground), short sandy sides, sitting in the sea
   var sea = GROUND_Y + 26, hw = STAGE_W / 2;
   ctx.fillStyle = '#f3dfae'; ctx.beginPath(); ctx.moveTo(-hw - 6, GROUND_Y + 14); ctx.quadraticCurveTo(-hw - 18, sea - 2, -hw - 26, sea + 6); ctx.lineTo(hw + 26, sea + 6); ctx.quadraticCurveTo(hw + 18, sea - 2, hw + 6, GROUND_Y + 14); ctx.closePath(); ctx.fill();
@@ -1744,7 +1881,7 @@ function cpuStep(dt){
   if (c.hold > 0.35) { CPU = null; CPU_DROP = true; doDrop(); CPU_DROP = false; }
 }
 
-window.__tb = {over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
+window.__tb = {alt:function(h){ topY = GROUND_Y - h; camTop = camTarget = Math.min(baseCam(), topY - 300); altCheck(); }, over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
   state:function(){ return {state:state, count:count, turnP:turnP, placed:placed.length, loser:loser, mode:MODE, net:NET ? {role:NET.role, open:NET.open, room:NET.room, wins:MATCH ? MATCH.wins : null} : null, match:MATCH}; },
   setX:function(x){ curX = x; aimSend(true); }, setPoolBlobs:function(n){ POOL = []; for (var i = 0; i < n; i++) POOL.push(makeBlob(i)); POOL = POOL.filter(Boolean); }};
 requestAnimationFrame(step);
