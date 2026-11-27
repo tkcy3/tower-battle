@@ -158,6 +158,10 @@ body:not(.play) #gSet{display:none}
 #altB.on{animation:altPop 2.6s ease forwards}
 @keyframes altPop{0%{opacity:0;transform:translate(-50%,-10px) scale(.6)}12%{opacity:1;transform:translate(-50%,0) scale(1.08)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(.96)}}
 body.cel #altB{display:none}
+.cs{max-height:86vh;overflow:auto;font-size:14px;line-height:1.6}
+.cs h2{font-size:21px;margin:0 0 8px}.cs h3{font-size:15px;margin:12px 0 2px}.cs ul{margin:0;padding-left:20px}.cs p{margin:0}
+.csChk{display:flex;gap:8px;align-items:center;margin:14px 0 10px;font-weight:800;font-size:15px}.csChk input{width:22px;height:22px}
+#csYes:disabled{opacity:.45}
 #coach{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);width:min(92vw,380px);background:rgba(255,253,247,.97);border:3px solid var(--accent);border-radius:20px;padding:12px 14px 10px;z-index:30;box-shadow:0 5px 0 rgba(59,74,84,.12);display:none}
 body.tut.play #coach{display:block}
 body.tut.play.cel #coach,body.tut.play.result #coach{display:none}
@@ -278,6 +282,7 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
   <div class="srow"><span>BGM</span><div class="sg" id="sB"><button data-v="0">OFF</button><button data-v="1">小</button><button data-v="2">中</button><button data-v="3">大</button></div></div>
   <div class="srow"><span>効果音</span><div class="sg" id="sS"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
   <div class="srow"><span>振動</span><div class="sg" id="sV"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
+  <div class="srow hidden" id="sLogRow"><span>プレイ記録を送る<small>ゲームの改善に使います</small></span><div class="sg" id="sL"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
   <button class="rowBtn" id="sHow"><span>🔰 あそびかた（れんしゅう）</span><span class="rs">›</span></button>
   <button class="rowBtn" id="sU"><span>📋 更新内容<span class="newb hidden" id="sNew">NEW</span></span><span class="rs">v<span id="sVer"></span> ›</span></button>
   <div class="srow" style="border:0"><span>記録のリセット<small>ひとりのさいこう記録と、勝ち数</small></span><button class="dbtn" id="sX">リセット</button></div>
@@ -289,6 +294,19 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
   <button class="sub" id="chgC">戻る</button>
 </div></div>
 <div id="coach"><div id="coachTx"></div><div id="coachRow"><span id="coachDots"></span><button id="coachNext" class="hidden">つぎへ ›</button><button id="coachSkip">スキップ</button></div></div>
+<div class="ov hidden" id="csOv"><div class="sheet cs">
+  <h2>プレイ記録の送信について</h2>
+  <p>もっと遊びやすいゲームにするため、プレイの記録を作者に送らせてください。集めた記録は<b>ゲームの調整・改善のためだけ</b>に使います。</p>
+  <h3>送る内容</h3>
+  <ul><li>ゲームが終わったときの記録（遊び方・お題・画像のさがし先・積んだ数・とどいた高さ・勝ち負け・まわした回数・プレイ時間）</li><li>ゲームのバージョン</li><li>端末ごとにランダムに作られる番号（同じ端末の記録をまとめるためのもので、あなた個人とは結びつきません）</li></ul>
+  <h3>送らないもの</h3>
+  <ul><li>名前（ネット対戦の名前もふくむ）・メールアドレス・電話番号・位置情報など、個人を特定できる情報</li><li>チャットの中身・写真・連絡先など、端末の中の情報</li></ul>
+  <h3>そのほか</h3>
+  <ul><li>記録を第三者に渡すことはありません</li><li>送るかどうかは、設定からいつでも変えられます</li><li>送らない場合も、ゲームはすべて同じように遊べます</li></ul>
+  <label class="csChk"><input type="checkbox" id="csChk"><span>上記の内容を確認しました</span></label>
+  <button class="big" id="csYes" disabled>同意して送信する</button>
+  <button class="sub" id="csNo" style="margin-top:8px">送信しない</button>
+</div></div>
 <div class="ov hidden" id="tutOv"><div class="sheet" style="text-align:center">
   <div style="font-size:46px;line-height:1.1">🔰</div>
   <h2 style="margin:6px 0 4px">はじめてかな？</h2>
@@ -336,6 +354,7 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.12.0', d:'2026-11-28', items:['📝 プレイ記録を送るしくみを入れました。内容を確認して同意したときだけ送ります（設定からいつでも変えられます）']},
   {v:'0.11.0', d:'2026-11-28', items:['👆 がめんをタップすると、パーツがくるっとまわるようになりました。ボタンは「おとす」だけでシンプルに','🔰 あそびかたの「れんしゅう」をつけました。はじめてのときと、ホームの「🔰 あそびかた」・設定から遊べます']},
   {v:'0.10.1', d:'2026-11-28', items:['☁️ 雲がゆっくり流れるようにしました']},
   {v:'0.10.0', d:'2026-11-28', items:['☀️ 高く積むほど、とりさん・おひさま・ききゅう・くも・ひこうき・にじ・よぞら・うちゅうが見えてくるようになりました','🎈 あたらしい高さにとどくと、お知らせが出ます。結果画面にも、どこまでとどいたかが出ます','🖼️ アイコンを新しくしました']},
@@ -905,7 +924,7 @@ function newRound(starter){
     world.on('begin-contact', onContact);
     world.createBody({type:'static', position:PL.Vec2(0, (GROUND_Y + 20) / PS)}).createFixture(PL.Box(STAGE_W / 2 / PS, 20 / PS), {friction:CFG.gfric});
   } else world = null;
-  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
+  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; LOG = {t0:Date.now(), rot:0, hmax:0}; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
   if (isHost()) {
@@ -931,6 +950,7 @@ function beginAim(pi, sc){
   camTarget = Math.min(baseCam(), topY - 300);
   cur = makeBody(pi, sc); curX = 0; curAng = angNow = 0; setAng(cur, 0); placeCur();
   state = 'aim'; updHud();
+  LOG.hmax = Math.max(LOG.hmax, GROUND_Y - topY);
   altCheck(); if (TUT) tutTick();
 }
 function updHud(){
@@ -960,14 +980,14 @@ function doDrop(){
   if (TUT) { TUT.drops++; tutTick(); }
 }
 var NET_DROP = false;
-function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; sfx('rot'); aimSend(true); if (TUT) { TUT.rot++; tutTick(); } } }
+function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; LOG.rot++; sfx('rot'); aimSend(true); if (TUT) { TUT.rot++; tutTick(); } } }
 $('drop').onclick = doDrop;
 var quitArm = 0;
 $('quit').onclick = function(){
   if (Date.now() - quitArm > 2500) { quitArm = Date.now(); toast('もう一回おすと やめるよ'); return; }
   leave();
 };
-function leave(){ if (TUT) { tutEnd(); return; } state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
+function leave(){ if (TUT) { tutEnd(); return; } if ((state === 'aim' || state === 'drop' || state === 'wait' || state === 'sent') && count > 0) sendLog('quit'); state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
 addEventListener('keydown', function(e){
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (state !== 'aim' || !myTurn()) return;
@@ -998,7 +1018,7 @@ function gameOver(who){
   else if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
   else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); cpuTalk(who === 0 ? 'youFell' : 'iFell'); }
   else { MATCH.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:MATCH.wins}); }
-  updHud();
+  updHud(); gameEnded();
 }
 var NEWBEST = false;
 function altLine(){ if (!altLv) return ''; var a = ALT[altLv - 1]; return '<div class="mstat">' + a.t.split(' ')[0] + ' ' + a.r + 'まで積めたよ</div>'; }
@@ -1037,6 +1057,7 @@ function startTut(){
   newRound(0); tutShow();
 }
 function tutEnd(){
+  if (TUT) sendLog('tut', {step:TUT.step, fell:TUT.fell ? 1 : 0, n:count});
   TUT = null; document.body.classList.remove('tut', 'tutDrop');
   if (tutPrevMode !== null) { MODE = tutPrevMode; tutPrevMode = null; }
   state = 'idle'; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel');
@@ -1080,6 +1101,46 @@ $('howBtn').onclick = function(){ ac(); startTut(); };
 $('sHow').onclick = function(){ $('setOv').classList.add('hidden'); if (TUT) startTut(); else if (state === 'idle' || !document.body.classList.contains('play')) startTut(); else toast('ゲームがおわってから見てね'); };
 $('tutYes').onclick = function(){ $('tutOv').classList.add('hidden'); startTut(); };
 $('tutNo').onclick = function(){ $('tutOv').classList.add('hidden'); S.tut = 1; save(); startNow(); };
+
+/* ---------- play log: one line per finished game → the author's Google Form (shared spreadsheet, "たわーばとる" sheet).
+   Sent only after the player agrees. While SHARE_URL is empty nothing is sent and no consent screen appears. ---------- */
+var SHARE_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfPeVqIWacwJ9IFMAvEm7nN2cjwyYuvHpSHjHTuC1cLiyPAsw/formResponse', SHARE_ENTRY = 'entry.1452804743';
+function canShare(){ return !!(SHARE_URL && SHARE_ENTRY); }
+function shareOn(){ return canShare() && S.consent === 1 && SET.share !== 0; }
+function csShared(){ try { return JSON.parse(localStorage.getItem('tkcy3_consent_v1') || 'null'); } catch(e) { return null; } }
+function csShare(ok){ try { localStorage.setItem('tkcy3_consent_v1', JSON.stringify({v:1, ok:ok ? 1 : 0, at:Date.now()})); localStorage.setItem('tkcy3_share', ok ? '1' : '0'); } catch(e) {} }
+(function csAdopt(){
+  var c = csShared(); if (!c) return;
+  if (S.consent === undefined || (c.ok && S.consent !== 1)) S.consent = c.ok ? 1 : 0;
+  var sh = null; try { sh = localStorage.getItem('tkcy3_share'); } catch(e) {}
+  SET.share = (S.consent === 1 && sh !== '0') ? 1 : 0; save();
+})();
+function openConsent(after){
+  $('csChk').checked = S.consent === 1; $('csYes').disabled = S.consent !== 1;
+  $('csOv').classList.remove('hidden');
+  var done = function(ok){ S.consent = ok ? 1 : 0; S.consentAt = Date.now(); SET.share = ok ? 1 : 0; save(); csShare(ok); $('csOv').classList.add('hidden'); if (after) after(); };
+  $('csChk').onchange = function(){ $('csYes').disabled = !this.checked; };
+  $('csYes').onclick = function(){ if ($('csChk').checked) done(true); };
+  $('csNo').onclick = function(){ done(false); };
+}
+function devId(){ if (!S.dev) { S.dev = Math.random().toString(36).slice(2, 10); save(); } return S.dev; }
+function isApp(){ try { return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true; } catch(e) { return false; } }
+var LOG = {t0:0, rot:0, hmax:0};
+function poolMix(){ var m = {}; POOL.forEach(function(pc){ var k = pc.src || (pc.credit ? '?' : 'blob'); m[k] = (m[k] || 0) + 1; }); return Object.keys(m).map(function(k){ return k + ':' + m[k]; }).join(' '); }
+function sendLog(ev, extra){
+  if (!shareOn()) return;
+  try {
+    var me = myIdx(), d = {v:VERSION, id:devId(), ev:ev, mode:MODE, topic:TOPIC, srcs:S.srcs.join(' '), pool:POOL.length, mix:poolMix(),
+      n:count, h:Math.round(LOG.hmax), alt:altLv ? ALT[altLv - 1].k : '', rot:LOG.rot, sec:LOG.t0 ? Math.round((Date.now() - LOG.t0) / 1000) : 0,
+      res:MODE === 'solo' ? '' : (loser < 0 ? '' : (loser === me ? 'lose' : 'win')), len:MATCH ? MATCH.len : 0, wins:MATCH ? MATCH.wins.join('-') : '', game:MATCH ? MATCH.game + 1 : 0,
+      role:NET ? NET.role : '', games:S.games || 0, app:isApp() ? 1 : 0};
+    if (extra) for (var k in extra) d[k] = extra[k];
+    var body = new URLSearchParams(); body.append(SHARE_ENTRY, JSON.stringify(d));
+    var ok = false; try { ok = navigator.sendBeacon && navigator.sendBeacon(SHARE_URL, body); } catch(e) {}
+    if (!ok) fetch(SHARE_URL, {method:'POST', mode:'no-cors', body:body, keepalive:true}).catch(function(){});
+  } catch(e) {}
+}
+function gameEnded(){ if (TUT) return; S.games = (S.games || 0) + 1; save(); sendLog('over'); }
 
 /* ---------- result ---------- */
 function miniThumbs(){ return '<div class="mini" id="miniT"></div>'; }
@@ -1303,7 +1364,7 @@ function onNet(m){
       setAng(b, m.a); setPos(b, m.x, b.position.y);
       b.plugin.id = m.id; b.plugin.tg = {x:b.position.x, y:b.position.y, a:b.angle}; byId[m.id] = b; placed.push(b); cur = null; state = 'drop'; hintOn = false; updHud(); sfx('drop');
     } break;
-    case 'over': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); } break;
+    case 'over': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); gameEnded(); } break;
     case 'want': NET.want[them] = true; if (state === 'over') renderResult(); checkWant(); break;
     // host side
     case 'ready': if (host) newRound(chooser()); break;
@@ -1625,7 +1686,7 @@ function showCredits(){
 function verUnseen(){ if (S.seenVer === VERSION) return false; if (!S.seenVer && !S.topic) { S.seenVer = VERSION; save(); return false; } return true; }
 function refreshVer(){ var b = $('ver'), nw = verUnseen(); b.textContent = 'v' + VERSION + (nw ? ' ・ 更新内容を見る' : ''); b.classList.toggle('new', nw); }
 function segOn(id, v){ Array.prototype.forEach.call($(id).children, function(b){ b.classList.toggle('on', +b.dataset.v === +v); }); }
-function openSet(){ ac(); segOn('sB', SET.bgm); segOn('sS', SET.se); segOn('sV', SET.vib); $('sVer').textContent = VERSION; $('sNew').classList.toggle('hidden', !verUnseen()); xArm = 0; $('sX').textContent = 'リセット'; $('setOv').classList.remove('hidden'); }
+function openSet(){ ac(); segOn('sB', SET.bgm); segOn('sS', SET.se); segOn('sV', SET.vib); $('sVer').textContent = VERSION; $('sLogRow').classList.toggle('hidden', !canShare()); segOn('sL', shareOn() ? 1 : 0); $('sNew').classList.toggle('hidden', !verUnseen()); xArm = 0; $('sX').textContent = 'リセット'; $('setOv').classList.remove('hidden'); }
 function openChg(){
   S.seenVer = VERSION; save(); refreshVer();
   $('chgBody').innerHTML = CHANGELOG.map(function(c){ return '<div><b>v' + c.v + '<span style="font-weight:500;color:var(--muted);font-size:12px;margin-left:8px">' + c.d + '</span></b><ul>' + c.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>'; }).join('');
@@ -1634,6 +1695,13 @@ function openChg(){
 $('setBtn').onclick = openSet; $('gSet').onclick = openSet;
 $('sC').onclick = function(){ $('setOv').classList.add('hidden'); };
 $('sU').onclick = function(){ openChg(); };
+$('sL').addEventListener('click', function(e){
+  var b = e.target.closest('button'); if (!b) return; var on = b.dataset.v === '1';
+  if (on && S.consent !== 1) { $('setOv').classList.add('hidden'); openConsent(openSet); return; }
+  SET.share = on ? 1 : 0; save(); try { localStorage.setItem('tkcy3_share', on ? '1' : '0'); } catch(_) {} segOn('sL', on ? 1 : 0);
+});
+// first launch: ask once (unless already answered here or on the game portal)
+if (canShare() && S.consent === undefined) setTimeout(function(){ openConsent(null); }, 300);
 $('ver').onclick = function(){ openChg(); };
 $('chgC').onclick = function(){ $('chgOv').classList.add('hidden'); if (!$('setOv').classList.contains('hidden')) openSet(); };
 $('setOv').addEventListener('click', function(e){ if (e.target === this) this.classList.add('hidden'); });
