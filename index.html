@@ -72,8 +72,7 @@ input.tx:focus{border-color:var(--p1)}
 #roomTag i{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block}
 #ctrl{position:fixed;left:0;right:0;bottom:0;display:flex;gap:12px;justify-content:center;padding:0 14px calc(env(safe-area-inset-bottom) + 14px);z-index:6}
 #ctrl button{height:72px;font-size:22px;font-weight:900;border-width:3px}
-#rot{width:92px}
-#drop{flex:1;max-width:300px;background:var(--accent);border-color:var(--accentd);color:#5a3b00}
+#drop{flex:1;max-width:340px;background:var(--accent);border-color:var(--accentd);color:#5a3b00}
 #waitTx{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 34px);text-align:center;font-size:18px;z-index:6;text-shadow:0 0 4px #fff,0 0 4px #fff}
 #side{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom) + 98px);display:flex;flex-direction:column;gap:8px;z-index:21}
 #side button{width:46px;height:46px;border-radius:50%;padding:0;font-size:21px}
@@ -159,6 +158,23 @@ body:not(.play) #gSet{display:none}
 #altB.on{animation:altPop 2.6s ease forwards}
 @keyframes altPop{0%{opacity:0;transform:translate(-50%,-10px) scale(.6)}12%{opacity:1;transform:translate(-50%,0) scale(1.08)}20%{transform:translate(-50%,0) scale(1)}80%{opacity:1;transform:translate(-50%,0) scale(1)}100%{opacity:0;transform:translate(-50%,-8px) scale(.96)}}
 body.cel #altB{display:none}
+#coach{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);width:min(92vw,380px);background:rgba(255,253,247,.97);border:3px solid var(--accent);border-radius:20px;padding:12px 14px 10px;z-index:30;box-shadow:0 5px 0 rgba(59,74,84,.12);display:none}
+body.tut.play #coach{display:block}
+body.tut.play.cel #coach,body.tut.play.result #coach{display:none}
+#coachTx{font-size:19px;font-weight:900;line-height:1.45;text-align:center;color:var(--ink)}
+#coachTx small{display:block;font-size:14px;font-weight:700;color:var(--muted);margin-top:2px}
+#coachTx.pop{animation:cpop .35s ease}
+@keyframes cpop{0%{transform:scale(.9);opacity:.3}100%{transform:scale(1);opacity:1}}
+#coachRow{display:flex;align-items:center;gap:8px;margin-top:8px}
+#coachDots{flex:1;display:flex;gap:5px}
+#coachDots i{width:9px;height:9px;border-radius:50%;background:#d9d2c3}
+#coachDots i.on{background:var(--accent)}
+#coachRow button{border:0;background:none;font-size:14px;font-weight:800;color:var(--muted);padding:6px 4px}
+#coachNext{color:var(--accentd)!important;font-size:16px!important}
+body.tut #hud,body.tut #gSet{visibility:hidden}
+body.tut #altB{top:calc(env(safe-area-inset-top) + 200px)}
+body.tutDrop #drop{animation:dpulse 1s ease infinite}
+@keyframes dpulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(255,190,80,.7)}50%{transform:scale(1.05);box-shadow:0 0 0 12px rgba(255,190,80,0)}}
 #toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 96px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:14px;font-size:15px;max-width:90vw;text-align:center;transition:opacity .4s;pointer-events:none;z-index:50}
 </style>
 </head>
@@ -172,7 +188,6 @@ body.cel #altB{display:none}
 <button id="gSet" aria-label="設定">⚙</button>
 <div id="roomTag"><i></i><span id="roomTagNo">部屋</span></div>
 <div id="ctrl">
-  <button id="rot" aria-label="まわす">⟳</button>
   <button id="drop" aria-label="おとす">おとす ▼</button>
 </div>
 <div id="waitTx"></div>
@@ -203,7 +218,7 @@ body.cel #altB{display:none}
   </div>
   <div id="homeSpace"></div>
   <button class="big" id="start">はじめる</button>
-  <div class="foot"><button class="link" id="ver"></button><button class="link hidden" id="credBtn">画像のクレジット</button></div>
+  <div class="foot"><button class="link" id="howBtn">🔰 あそびかた</button><button class="link" id="ver"></button><button class="link hidden" id="credBtn">画像のクレジット</button></div>
 </div>
 
 <div id="load" class="layer hidden">
@@ -263,6 +278,7 @@ body.cel #altB{display:none}
   <div class="srow"><span>BGM</span><div class="sg" id="sB"><button data-v="0">OFF</button><button data-v="1">小</button><button data-v="2">中</button><button data-v="3">大</button></div></div>
   <div class="srow"><span>効果音</span><div class="sg" id="sS"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
   <div class="srow"><span>振動</span><div class="sg" id="sV"><button data-v="1">ON</button><button data-v="0">OFF</button></div></div>
+  <button class="rowBtn" id="sHow"><span>🔰 あそびかた（れんしゅう）</span><span class="rs">›</span></button>
   <button class="rowBtn" id="sU"><span>📋 更新内容<span class="newb hidden" id="sNew">NEW</span></span><span class="rs">v<span id="sVer"></span> ›</span></button>
   <div class="srow" style="border:0"><span>記録のリセット<small>ひとりのさいこう記録と、勝ち数</small></span><button class="dbtn" id="sX">リセット</button></div>
   <button class="sub" id="sC">閉じる</button>
@@ -271,6 +287,14 @@ body.cel #altB{display:none}
   <h2>📋 更新内容</h2>
   <div class="chg" id="chgBody"></div>
   <button class="sub" id="chgC">戻る</button>
+</div></div>
+<div id="coach"><div id="coachTx"></div><div id="coachRow"><span id="coachDots"></span><button id="coachNext" class="hidden">つぎへ ›</button><button id="coachSkip">スキップ</button></div></div>
+<div class="ov hidden" id="tutOv"><div class="sheet" style="text-align:center">
+  <div style="font-size:46px;line-height:1.1">🔰</div>
+  <h2 style="margin:6px 0 4px">はじめてかな？</h2>
+  <div style="color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:14px">あそびかたを、れんしゅうしながら<br>おぼえよう！（1ぷんくらい）</div>
+  <button class="big" id="tutYes">れんしゅうする</button>
+  <button class="sub" id="tutNo" style="margin-top:10px">すぐにあそぶ</button>
 </div></div>
 <div id="toast" style="opacity:0"></div><div id="altB"></div>
 
@@ -312,6 +336,7 @@ body.cel #altB{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.11.0', d:'2026-11-28', items:['👆 がめんをタップすると、パーツがくるっとまわるようになりました。ボタンは「おとす」だけでシンプルに','🔰 あそびかたの「れんしゅう」をつけました。はじめてのときと、ホームの「🔰 あそびかた」・設定から遊べます']},
   {v:'0.10.1', d:'2026-11-28', items:['☁️ 雲がゆっくり流れるようにしました']},
   {v:'0.10.0', d:'2026-11-28', items:['☀️ 高く積むほど、とりさん・おひさま・ききゅう・くも・ひこうき・にじ・よぞら・うちゅうが見えてくるようになりました','🎈 あたらしい高さにとどくと、お知らせが出ます。結果画面にも、どこまでとどいたかが出ます','🖼️ アイコンを新しくしました']},
   {v:'0.9.2', d:'2026-11-28', items:['✏️ 名前の入力らんの見本を「例）たかし」にしました']},
@@ -394,7 +419,8 @@ setMode(MODE);
 function getTopic(){ var t = ($('topic').value || '').trim(); if (!t) { t = CHIPS[0][0]; $('topic').value = t; } S.topic = t; save(); return t; }
 function getName(){ var n = ($('myName').value || '').trim().slice(0, 8); S.name = n; save(); return n || 'ななし'; }
 $('topic').addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); $('topic').blur(); if (!$('pick').classList.contains('hidden')) pickGo(); else if (MODE === 'solo') startLocal(); } });
-$('start').onclick = function(){ if (MODE === 'cpu') startCpuMatch(); else startLocal(); };
+function startNow(){ if (MODE === 'cpu') startCpuMatch(); else startLocal(); }
+$('start').onclick = function(){ if (!S.tut) { $('tutOv').classList.remove('hidden'); return; } startNow(); };
 $('credBtn').onclick = showCredits;
 $('credClose').onclick = function(){ $('cred').classList.add('hidden'); };
 $('joinBtn').onclick = function(){ $('joinBox').classList.toggle('hidden'); if (!$('joinBox').classList.contains('hidden')) $('joinNo').focus(); };
@@ -905,7 +931,7 @@ function beginAim(pi, sc){
   camTarget = Math.min(baseCam(), topY - 300);
   cur = makeBody(pi, sc); curX = 0; curAng = angNow = 0; setAng(cur, 0); placeCur();
   state = 'aim'; updHud();
-  altCheck();
+  altCheck(); if (TUT) tutTick();
 }
 function updHud(){
   var t = $('turn'), col;
@@ -931,16 +957,17 @@ function doDrop(){
   if (NET) send({t:'add', id:cur.plugin.id, pi:cur.plugin.pi, sc:cur.plugin.sc, x:curX, a:curAng});
   sfx('drop');
   cur = null; state = 'drop'; dropT = 0; still = 0; hintOn = false; updHud();
+  if (TUT) { TUT.drops++; tutTick(); }
 }
 var NET_DROP = false;
-function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; sfx('rot'); aimSend(true); } }
-$('rot').onclick = rotate; $('drop').onclick = doDrop;
+function rotate(){ if (state === 'aim' && myTurn()) { curAng += Math.PI / 4; sfx('rot'); aimSend(true); if (TUT) { TUT.rot++; tutTick(); } } }
+$('drop').onclick = doDrop;
 var quitArm = 0;
 $('quit').onclick = function(){
   if (Date.now() - quitArm > 2500) { quitArm = Date.now(); toast('もう一回おすと やめるよ'); return; }
   leave();
 };
-function leave(){ state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
+function leave(){ if (TUT) { tutEnd(); return; } state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
 addEventListener('keydown', function(e){
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (state !== 'aim' || !myTurn()) return;
@@ -949,9 +976,16 @@ addEventListener('keydown', function(e){
 });
 function clampX(){ curX = Math.max(-185, Math.min(185, curX)); }
 var drag = null;
-cv.addEventListener('pointerdown', function(e){ document.body.classList.remove('rxOpen'); if (state !== 'aim' || !myTurn()) return; drag = {x:e.clientX, cx:curX}; try { cv.setPointerCapture(e.pointerId); } catch(_) {} });
-cv.addEventListener('pointermove', function(e){ if (!drag || state !== 'aim') return; curX = drag.cx + (e.clientX - drag.x) / SC; clampX(); hintOn = false; aimSend(); });
-cv.addEventListener('pointerup', function(){ drag = null; aimSend(true); });
+// slide = move left/right, tap = turn
+cv.addEventListener('pointerdown', function(e){ document.body.classList.remove('rxOpen'); if (state !== 'aim' || !myTurn()) return; drag = {x:e.clientX, cx:curX, t:Date.now(), far:0}; try { cv.setPointerCapture(e.pointerId); } catch(_) {} });
+cv.addEventListener('pointermove', function(e){
+  if (!drag || state !== 'aim') return;
+  var dx = e.clientX - drag.x; drag.far = Math.max(drag.far, Math.abs(dx));
+  if (drag.far < 8) return;
+  var nx = drag.cx + dx / SC; if (TUT) TUT.moved += Math.abs(nx - curX);
+  curX = nx; clampX(); hintOn = false; aimSend(); tutTick();
+});
+cv.addEventListener('pointerup', function(){ var d = drag; drag = null; if (d && d.far < 8 && Date.now() - d.t < 450) rotate(); else aimSend(true); });
 cv.addEventListener('pointercancel', function(){ drag = null; });
 var aimT = 0;
 function aimSend(force){ if (!NET || NET.role !== 'guest' || !myTurn()) return; var n = Date.now(); if (!force && n - aimT < 50) return; aimT = n; send({t:'aim', x:curX, a:curAng}); }
@@ -960,7 +994,8 @@ function gameOver(who){
   if (state === 'over') return;
   state = 'over'; loser = who; overT = 0; cur = null; CPU = null;
   sfx('splash'); vib([40, 40, 80]); if (NET) send({t:'fx', k:'splash'});
-  if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
+  if (TUT) { TUT.fell = true; tutTick(); NEWBEST = false; }
+  else if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
   else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); cpuTalk(who === 0 ? 'youFell' : 'iFell'); }
   else { MATCH.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:MATCH.wins}); }
   updHud();
@@ -968,12 +1003,99 @@ function gameOver(who){
 var NEWBEST = false;
 function altLine(){ if (!altLv) return ''; var a = ALT[altLv - 1]; return '<div class="mstat">' + a.t.split(' ')[0] + ' ' + a.r + 'まで積めたよ</div>'; }
 
+/* ---------- tutorial (れんしゅう) ---------- */
+var TUT = null, tutPrevMode = null;
+var TUT_STEPS = [
+  ['ゆびで 左右に うごかしてみよう', 'がめんを さわったまま すべらせてね'],
+  ['がめんを タップすると<br>くるっと まわるよ', '2かい まわしてみよう'],
+  ['「おとす」を おして<br>島の上に おとそう！', ''],
+  ['ゆれが とまるまで まってね…', ''],
+  ['じょうず！ もう1こ 積んでみよう', 'うごかす・まわす・おとす、だよ'],
+  ['たかく積むほど、とりさんや<br>おひさまが 見えてくるよ☀️', '島から落としたら おしまい。<br>どこまで積めるかな？']
+];
+function tutPiece(kind, col){
+  var c = document.createElement('canvas'); c.width = c.height = 220; var x = c.getContext('2d');
+  x.fillStyle = col; x.strokeStyle = '#3b4a54'; x.lineWidth = 10; x.lineJoin = 'round'; x.beginPath();
+  if (kind === 'box') x.rect(30, 50, 160, 120);
+  else if (kind === 'wide') x.rect(15, 75, 190, 70);
+  else if (kind === 'tri') { x.moveTo(110, 22); x.lineTo(200, 190); x.lineTo(20, 190); x.closePath(); }
+  else if (kind === 'hex') { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; x.lineTo(110 + Math.cos(a) * 92, 110 + Math.sin(a) * 80); } x.closePath(); }
+  x.fill(); x.stroke();
+  var fy = kind === 'tri' ? 140 : 110;
+  x.fillStyle = '#3b4a54'; x.beginPath(); x.arc(92, fy - 6, 7, 0, 7); x.arc(128, fy - 6, 7, 0, 7); x.fill();
+  x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(100, fy + 8); x.quadraticCurveTo(110, fy + 16, 120, fy + 8); x.stroke();
+  return makePiece(c, {force:true});
+}
+function startTut(){
+  job++; if (tutPrevMode === null) tutPrevMode = MODE;
+  NET = null; MATCH = null; MODE = 'solo'; setNetClass();
+  POOL = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['box', '#ffd34d']].map(function(k){ return tutPiece(k[0], k[1]); }).filter(Boolean);
+  CREDITS = []; TOPIC = 'れんしゅう';
+  TUT = {step:0, moved:0, rot:0, drops:0, fell:false, wait:0};
+  S.tut = 1; save();
+  document.body.classList.add('tut');
+  newRound(0); tutShow();
+}
+function tutEnd(){
+  TUT = null; document.body.classList.remove('tut', 'tutDrop');
+  if (tutPrevMode !== null) { MODE = tutPrevMode; tutPrevMode = null; }
+  state = 'idle'; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel');
+  setNetClass(); show('home'); setMode(MODE);
+}
+function tutShow(){
+  if (!TUT) return;
+  var st = TUT_STEPS[Math.min(TUT.step, TUT_STEPS.length - 1)], e = $('coachTx');
+  e.innerHTML = st[0] + (st[1] ? '<small>' + st[1] + '</small>' : '');
+  e.classList.remove('pop'); void e.offsetWidth; e.classList.add('pop');
+  var d = ''; for (var i = 0; i < TUT_STEPS.length; i++) d += '<i class="' + (i <= TUT.step ? 'on' : '') + '"></i>';
+  $('coachDots').innerHTML = d;
+  $('coachNext').classList.toggle('hidden', TUT.step !== 5);
+  $('coachSkip').classList.toggle('hidden', TUT.step >= 5);
+  document.body.classList.toggle('tutDrop', TUT.step === 2 || TUT.step === 4);
+}
+function tutGo(n){ if (!TUT || n <= TUT.step) return; TUT.step = n; sfx('next'); tutShow(); }
+function tutTick(){
+  if (!TUT) return;
+  if (TUT.fell) { if (TUT.step < 5) { $('coachTx').innerHTML = 'おっと！ 島から落ちちゃった<small>島から落としたら おしまい、だよ</small>'; document.body.classList.remove('tutDrop'); } return; }
+  var s = TUT.step;
+  if (s === 0 && TUT.moved > 70) tutGo(1);
+  else if (s === 1 && TUT.rot >= 2) setTimeout(function(){ tutGo(2); }, 450);
+  else if (s === 1 && TUT.rot === 1) { $('coachTx').innerHTML = 'くるっ！<small>もう1かい タップしてみよう</small>'; }
+  else if (s === 2 && TUT.drops >= 1) tutGo(3);
+  else if (s === 3 && state === 'aim') tutGo(4);
+  else if (s === 4 && TUT.drops >= 2) { $('coachTx').innerHTML = 'いいね！<small>ゆれが とまるまで まってね…</small>'; document.body.classList.remove('tutDrop'); }
+  if (TUT.step === 4 && TUT.drops >= 2 && state === 'aim') tutGo(5);
+}
+// little guide drawn over the piece: a sliding finger, then a tapping finger
+function tutDraw(t){
+  if (!cur || state !== 'aim' || TUT.fell) return;
+  var y = cur.bounds.min.y - 26;
+  ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(59,74,84,.8)';
+  if (TUT.step === 0) { ctx.font = '900 30px ' + FONT; ctx.fillText('👆', curX + Math.sin(t * 2.4) * 46, y + Math.sin(t * 4.8) * 2); ctx.font = '900 24px ' + FONT; ctx.fillText('←        →', curX, y - 38); }
+  else if (TUT.step === 1) { var k = (t * 1.4) % 1; ctx.font = '900 30px ' + FONT; ctx.fillText('👆', curX + 34, y + 6 - (k < 0.3 ? 0 : 8)); if (k < 0.3) { ctx.strokeStyle = 'rgba(255,170,60,' + (1 - k / 0.3) + ')'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(curX + 30, y - 18, 8 + k * 40, 0, 7); ctx.stroke(); } }
+}
+$('coachSkip').onclick = function(){ if (TUT && TUT.step < 5) tutEnd(); };
+$('coachNext').onclick = function(){ if (TUT) document.body.classList.remove('tut'); };
+$('howBtn').onclick = function(){ ac(); startTut(); };
+$('sHow').onclick = function(){ $('setOv').classList.add('hidden'); if (TUT) startTut(); else if (state === 'idle' || !document.body.classList.contains('play')) startTut(); else toast('ゲームがおわってから見てね'); };
+$('tutYes').onclick = function(){ $('tutOv').classList.add('hidden'); startTut(); };
+$('tutNo').onclick = function(){ $('tutOv').classList.add('hidden'); S.tut = 1; save(); startNow(); };
+
 /* ---------- result ---------- */
 function miniThumbs(){ return '<div class="mini" id="miniT"></div>'; }
 function fillMini(){ var m = $('miniT'); if (!m) return; POOL.slice(0, 10).forEach(function(pc){ m.appendChild(thumbCanvas(pc)); }); }
 function matchOver(){ return MATCH && (MATCH.wins[0] >= MATCH.len || MATCH.wins[1] >= MATCH.len); }
 function renderResult(){
   var c = $('resCard'), h = '', on = function(id, f){ var e = $(id); if (e) e.onclick = f; };
+  if (TUT) {
+    h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (TUT.step >= 5 ? '🔰 あそびかたは ばっちり！' : '🔰 島から落ちたら おしまい。もう一回やってみよう') + '</div>' + altLine();
+    h += '<button class="big" id="rTutEnd">' + (TUT.step >= 5 ? 'あそびかた おわり！' : 'もう一回れんしゅう') + '</button><button class="sub" id="rTutAlt">' + (TUT.step >= 5 ? 'もう一回れんしゅう' : 'ホームにもどる') + '</button>';
+    c.innerHTML = h;
+    var fin = TUT.step >= 5;
+    on('rTutEnd', function(){ if (fin) tutEnd(); else startTut(); });
+    on('rTutAlt', function(){ if (fin) startTut(); else tutEnd(); });
+    return;
+  }
   if (MODE === 'solo') {
     var b = S.best[TOPIC] || 0;
     h += '<div id="resBig">🧱 ' + count + ' こ積めたよ</div><div id="resSub">' + (NEWBEST ? '🏆 さいこう記録！' : '🏆 さいこう ' + b + ' こ') + ' ・「' + esc(TOPIC) + '」</div>' + altLine();
@@ -1485,7 +1607,8 @@ function draw(t){
   placed.forEach(drawBody);
   if ((state === 'aim' || state === 'sent') && cur) {
     drawBody(cur);
-    if (hintOn && myTurn()) { ctx.fillStyle = 'rgba(59,74,84,.7)'; ctx.font = '900 28px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('← 👆 →', curX, cur.bounds.min.y - 14 + Math.sin(t * 4) * 3); }
+    if (hintOn && myTurn() && !TUT) { ctx.fillStyle = 'rgba(59,74,84,.7)'; ctx.font = '900 28px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('← 👆 →', curX, cur.bounds.min.y - 14 + Math.sin(t * 4) * 3); ctx.font = '800 15px ' + FONT; ctx.fillText('タップで くるっ', curX, cur.bounds.min.y - 46 + Math.sin(t * 4) * 3); }
+    if (TUT && myTurn()) tutDraw(t);
   }
 }
 function roundRect(x, y, w, h, r){ ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
