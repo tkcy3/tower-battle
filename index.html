@@ -40,6 +40,7 @@ input.tx:focus{border-color:var(--p1)}
 #home h1 small{display:block;font-size:16px;font-weight:700;color:var(--muted);letter-spacing:3px;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:14px;padding:6px 11px;border-radius:999px;border-width:2px}
+.chips button.fr{border-color:var(--accent);background:#fff6e0}
 .src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);flex-wrap:wrap}
 .src button{font-size:14px;padding:6px 11px;border-radius:999px;border-width:2px}
 .srcLbl{width:100%;font-size:13px}
@@ -150,9 +151,12 @@ body:not(.play) #gSet{display:none}
 .rowBtn .rs{color:var(--muted);font-size:14px}
 .newb{margin-left:8px;font-size:11px;background:var(--p0);color:#fff;border-radius:999px;padding:2px 8px;vertical-align:2px}
 .dbtn{font-size:14px;padding:7px 14px;border-color:#efb3a6;color:#b9543a;border-radius:12px}
-.chg{display:flex;flex-direction:column;gap:12px;font-size:14px;font-weight:500;line-height:1.55}
-.chg b{display:block;font-size:15px;font-weight:900;margin-bottom:2px}
-.chg ul{margin:0;padding-left:1.2em}
+.chip{display:inline-block;padding:3px 12px;border-radius:12px;border:2px solid #d9d2c3;font-size:14px;font-weight:700;color:var(--muted)}
+.chg{max-height:62vh;overflow:auto;text-align:left}
+.chg h3{font-size:16px;margin:12px 0 4px;color:var(--accentd)}
+.chg ul{margin:0;padding-left:20px;font-size:15px;font-weight:500;line-height:1.7}
+.chg details{margin:0 0 4px}
+.chg summary{font-size:15px;font-weight:700;color:var(--muted);padding:8px 0;cursor:pointer}
 #ver.new{color:var(--p0d);text-decoration:none;font-weight:900}
 #altB{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 118px);transform:translate(-50%,-10px) scale(.6);background:rgba(255,253,247,.95);color:var(--ink);border:3px solid var(--accent);padding:8px 18px;border-radius:999px;font-size:19px;font-weight:900;white-space:nowrap;opacity:0;pointer-events:none;z-index:40;box-shadow:0 4px 0 rgba(59,74,84,.12)}
 #altB.on{animation:altPop 2.6s ease forwards}
@@ -288,6 +292,7 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
 </div></div>
 <div class="ov hidden" id="chgOv"><div class="sheet">
   <h2>📋 更新内容</h2>
+  <p style="text-align:center;margin:0 0 6px"><span class="chip" id="chgVer"></span></p>
   <div class="chg" id="chgBody"></div>
   <button class="sub" id="chgC">戻る</button>
 </div></div>
@@ -422,6 +427,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.13.0', d:'2026-11-28', items:['🙂 お題に「なかまたち」を追加しました。れんしゅうに出てくる顔つきのなかまたち（13しゅるい）で遊べます。画像をさがさないので、すぐ始められます','🌀 パーツをまわしたとき、上下にガタガタ動かず、まん中を軸にきれいに回るようにしました','📋 更新内容の見せ方を、ほかのゲームとそろえました（いちばん新しい更新だけ開いて、前の分は日付ごとにたたみます）']},
   {v:'0.12.1', d:'2026-11-28', items:['📝 プレイ記録の送信の同意を、ゲームポータル・ほかのゲームと同じ画面・同じ内容にそろえました','⚙ 設定に「送信内容について」を追加しました']},
   {v:'0.12.0', d:'2026-11-28', items:['📝 プレイ記録を送るしくみを入れました。内容を確認して同意したときだけ送ります（設定からいつでも変えられます）']},
   {v:'0.11.0', d:'2026-11-28', items:['👆 がめんをタップすると、パーツがくるっとまわるようになりました。ボタンは「おとす」だけでシンプルに','🔰 あそびかたの「れんしゅう」をつけました。はじめてのときと、ホームの「🔰 あそびかた」・設定から遊べます']},
@@ -472,9 +478,10 @@ function show(id){
 function setNetClass(){ document.body.classList.toggle('net', MODE === 'net'); document.body.classList.toggle('social', MODE === 'net' || MODE === 'cpu'); }
 
 /* ---------- home ---------- */
-var CHIPS = [['くるま','自動車'],['どうぶつ','動物'],['くだもの','果物'],['恐竜','恐竜'],['楽器','楽器'],['いす','椅子'],['とり','鳥'],['おかし','菓子']];
-$('chips').innerHTML = CHIPS.map(function(c){ return '<button>' + c[0] + '</button>'; }).join('');
-$('chips').addEventListener('click', function(e){ if (e.target.tagName === 'BUTTON') $('topic').value = e.target.textContent; });
+var FRIENDS = 'なかまたち';
+var CHIPS = [['くるま','自動車'],['なかまたち','なかまたち'],['どうぶつ','動物'],['くだもの','果物'],['恐竜','恐竜'],['楽器','楽器'],['いす','椅子'],['とり','鳥'],['おかし','菓子']];
+$('chips').innerHTML = CHIPS.map(function(c){ var f = c[0] === FRIENDS; return '<button data-t="' + c[0] + '"' + (f ? ' class="fr"' : '') + '>' + (f ? '🙂 ' : '') + c[0] + '</button>'; }).join('');
+$('chips').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) $('topic').value = b.dataset.t; });
 function topicQuery(t){ for (var i = 0; i < CHIPS.length; i++) if (CHIPS[i][0] === t) return CHIPS[i][1]; return t; }
 if (S.topic) $('topic').value = S.topic;
 var SRC_NAME = {ira:'いらすとや', emo:'えもじ', wiki:'ウィキ'};
@@ -810,6 +817,11 @@ var SOURCES = {wiki:{cand:candWiki, load:loadWiki}, ira:{cand:candIra, load:load
 // Gather pieces from every chosen source, taking turns so each one gets about the same share.
 function searchPieces(topic, cb){
   var my = ++job; POOL = []; TOPIC = topic;
+  if (topic === FRIENDS) {
+    var fp = friendPieces(), fi = 0;
+    (function next(){ if (my !== job) return; if (fi < fp.length) { POOL.push(fp[fi++]); cb.progress(POOL[POOL.length - 1]); setTimeout(next, 60); } else cb.done(); })();
+    return;
+  }
   var srcs = S.srcs.slice(), key = srcs.join('+') + ':' + topic;
   if (SEEN.topic !== key) SEEN = {topic:key, titles:{}};
   var used = SEEN.titles, st = {}, done = false;
@@ -881,7 +893,7 @@ function runSearch(topic, ctx){
     progress:function(pc){ $('thumbs').appendChild(thumbCanvas(pc)); $('loadN').textContent = POOL.length; if (POOL.length >= 4 && ctx.mine) $('loadGo').classList.remove('hidden'); },
     done:function(){
       $('loadTx').textContent = (ctx.label || '') + (POOL.length ? '「' + topic + '」がそろったよ' : '「' + topic + '」は見つからなかったよ');
-      if (ctx.mine) { $('loadGo').classList.remove('hidden'); $('loadRe').classList.remove('hidden'); }
+      if (ctx.mine) { $('loadGo').classList.remove('hidden'); $('loadRe').classList.toggle('hidden', topic === FRIENDS); }
       else setTimeout(function(){ if (LOADCTX === ctx) loadDone(); }, 900);
     }
   });
@@ -1035,7 +1047,9 @@ function updHud(){
   $('ctrl').style.visibility = mine ? 'visible' : 'hidden';
   $('waitTx').textContent = (MODE !== 'solo' && !mine && state !== 'over' && state !== 'idle') ? (state === 'aim' ? pname(turnP) + 'が考え中…' : 'ゆれてる…') : '';
 }
-function placeCur(){ setPos(cur, curX, cur.position.y); var hy = cur.position.y - cur.bounds.max.y; setPos(cur, curX, topY - CFG.gap + hy); }
+// the piece hangs by its centre: the height depends only on its farthest point, so turning it spins in place
+function hoverR(b){ if (b.plugin.R == null) { var r = 0; b.outline.forEach(function(q){ r = Math.max(r, Math.hypot(q.x, q.y)); }); b.plugin.R = r; } return b.plugin.R; }
+function placeCur(){ setPos(cur, curX, topY - CFG.gap - hoverR(cur)); }
 function doDrop(){
   if (state !== 'aim' || !cur) return;
   if (!isHost()) { if (!myTurn()) return; send({t:'drop', x:curX, a:curAng}); state = 'sent'; updHud(); return; }
@@ -1103,22 +1117,37 @@ var TUT_STEPS = [
   ['たかく積むほど、とりさんや<br>おひさまが 見えてくるよ☀️', '島から落としたら おしまい。<br>どこまで積めるかな？']
 ];
 function tutPiece(kind, col){
-  var c = document.createElement('canvas'); c.width = c.height = 220; var x = c.getContext('2d');
+  var c = document.createElement('canvas'); c.width = c.height = 220; var x = c.getContext('2d'), i, a;
   x.fillStyle = col; x.strokeStyle = '#3b4a54'; x.lineWidth = 10; x.lineJoin = 'round'; x.beginPath();
   if (kind === 'box') x.rect(30, 50, 160, 120);
   else if (kind === 'wide') x.rect(15, 75, 190, 70);
+  else if (kind === 'tall') x.rect(65, 15, 90, 190);
   else if (kind === 'tri') { x.moveTo(110, 22); x.lineTo(200, 190); x.lineTo(20, 190); x.closePath(); }
-  else if (kind === 'hex') { for (var i = 0; i < 6; i++) { var a = i / 6 * Math.PI * 2; x.lineTo(110 + Math.cos(a) * 92, 110 + Math.sin(a) * 80); } x.closePath(); }
+  else if (kind === 'hex') { for (i = 0; i < 6; i++) { a = i / 6 * Math.PI * 2; x.lineTo(110 + Math.cos(a) * 92, 110 + Math.sin(a) * 80); } x.closePath(); }
+  else if (kind === 'penta') { for (i = 0; i < 5; i++) { a = i / 5 * Math.PI * 2 - Math.PI / 2; x.lineTo(110 + Math.cos(a) * 95, 118 + Math.sin(a) * 95); } x.closePath(); }
+  else if (kind === 'ball') x.arc(110, 110, 88, 0, 7);
+  else if (kind === 'egg') x.ellipse(110, 110, 96, 66, 0, 0, 7);
+  else if (kind === 'dia') { x.moveTo(110, 12); x.lineTo(196, 110); x.lineTo(110, 208); x.lineTo(24, 110); x.closePath(); }
+  else if (kind === 'arch') { x.moveTo(15, 170); x.arc(110, 170, 95, Math.PI, 0); x.closePath(); }
+  else if (kind === 'bean') { x.moveTo(60, 40); x.lineTo(160, 40); x.arc(160, 110, 70, -Math.PI / 2, Math.PI / 2); x.lineTo(60, 180); x.arc(60, 110, 70, Math.PI / 2, Math.PI * 1.5); x.closePath(); }
+  else if (kind === 'ell') { x.moveTo(25, 20); x.lineTo(95, 20); x.lineTo(95, 130); x.lineTo(195, 130); x.lineTo(195, 200); x.lineTo(25, 200); x.closePath(); }
+  else if (kind === 'star') { for (i = 0; i < 10; i++) { a = i / 10 * Math.PI * 2 - Math.PI / 2; var r = i % 2 ? 48 : 100; x.lineTo(110 + Math.cos(a) * r, 120 + Math.sin(a) * r); } x.closePath(); }
   x.fill(); x.stroke();
-  var fy = kind === 'tri' ? 140 : 110;
+  var fy = {tri:140, arch:135, ell:165, star:125, penta:122}[kind] || 110, fx = kind === 'ell' ? 110 + 20 : 110;
+  if (kind === 'ell') { x.save(); x.translate(fx - 110, 0); }
   x.fillStyle = '#3b4a54'; x.beginPath(); x.arc(92, fy - 6, 7, 0, 7); x.arc(128, fy - 6, 7, 0, 7); x.fill();
   x.lineWidth = 6; x.lineCap = 'round'; x.beginPath(); x.moveTo(100, fy + 8); x.quadraticCurveTo(110, fy + 16, 120, fy + 8); x.stroke();
-  return makePiece(c, {force:true});
+  if (kind === 'ell') x.restore();
+  x.fillStyle = 'rgba(255,127,138,.45)'; x.beginPath(); x.ellipse(fx - 34, fy + 6, 10, 6, 0, 0, 7); x.ellipse(fx + 34, fy + 6, 10, 6, 0, 0, 7); x.fill();
+  var pc = makePiece(c, {force:true}); if (pc) pc.src = 'friends'; return pc;
 }
+// 「なかまたち」: the practice friends, as a topic everyone can pick (no image search needed)
+var FRIEND_SET = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['ball', '#ffd34d'], ['tall', '#b79cf0'], ['penta', '#6ec7a8'], ['egg', '#ffc4a8'], ['dia', '#8fd0ef'], ['arch', '#f2a65a'], ['bean', '#a8d86e'], ['ell', '#f7a1c4'], ['star', '#ffe27a']];
+function friendPieces(){ return FRIEND_SET.map(function(k){ return tutPiece(k[0], k[1]); }).filter(Boolean); }
 function startTut(){
   job++; if (tutPrevMode === null) tutPrevMode = MODE;
   NET = null; MATCH = null; MODE = 'solo'; setNetClass();
-  POOL = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['box', '#ffd34d']].map(function(k){ return tutPiece(k[0], k[1]); }).filter(Boolean);
+  POOL = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['ball', '#ffd34d']].map(function(k){ return tutPiece(k[0], k[1]); }).filter(Boolean);
   CREDITS = []; TOPIC = 'れんしゅう';
   TUT = {step:0, moved:0, rot:0, drops:0, fell:false, wait:0};
   S.tut = 1; save();
@@ -1745,9 +1774,25 @@ function verUnseen(){ if (S.seenVer === VERSION) return false; if (!S.seenVer &&
 function refreshVer(){ var b = $('ver'), nw = verUnseen(); b.textContent = 'v' + VERSION + (nw ? ' ・ 更新内容を見る' : ''); b.classList.toggle('new', nw); }
 function segOn(id, v){ Array.prototype.forEach.call($(id).children, function(b){ b.classList.toggle('on', +b.dataset.v === +v); }); }
 function openSet(){ ac(); segOn('sB', SET.bgm); segOn('sS', SET.se); segOn('sV', SET.vib); $('sVer').textContent = VERSION; $('sLogRow').classList.toggle('hidden', !canShare()); segOn('sL', shareOn() ? 1 : 0); $('sNew').classList.toggle('hidden', !verUnseen()); xArm = 0; $('sX').textContent = 'リセット'; $('setOv').classList.remove('hidden'); }
+function chgByDay(){ // updates of the same day are shown together, newest first
+  var out = [];
+  CHANGELOG.forEach(function(c){
+    var g = out.filter(function(x){ return x.d === c.d; })[0];
+    if (!g) { g = {d:c.d, items:[]}; out.push(g); }
+    g.items = g.items.concat(c.items);
+  });
+  return out;
+}
 function openChg(){
   S.seenVer = VERSION; save(); refreshVer();
-  $('chgBody').innerHTML = CHANGELOG.map(function(c){ return '<div><b>v' + c.v + '<span style="font-weight:500;color:var(--muted);font-size:12px;margin-left:8px">' + c.d + '</span></b><ul>' + c.items.map(function(i){ return '<li>' + esc(i) + '</li>'; }).join('') + '</ul></div>'; }).join('');
+  // same as KROPKI / Dungeon Chain / LAPIS: only the newest update is open, earlier ones fold up by day
+  var top = CHANGELOG[0];
+  var days = chgByDay().map(function(g){ return {d:g.d, items:g.items.filter(function(x){ return top.items.indexOf(x) < 0; })}; }).filter(function(g){ return g.items.length; });
+  var ul = function(items){ return '<ul>' + items.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'; };
+  var dt = function(d){ return d.slice(5).replace('-', '/'); };
+  $('chgVer').textContent = 'v' + VERSION;
+  $('chgBody').innerHTML = '<h3>✨ ' + dt(top.d) + '</h3>' + ul(top.items) + days.map(function(g){ return '<details><summary>' + dt(g.d) + '</summary>' + ul(g.items) + '</details>'; }).join('');
+  $('chgBody').scrollTop = 0;
   $('chgOv').classList.remove('hidden');
 }
 $('setBtn').onclick = openSet; $('gSet').onclick = openSet;
