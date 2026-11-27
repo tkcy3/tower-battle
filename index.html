@@ -36,14 +36,19 @@ input.tx:focus{border-color:var(--p1)}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chips button{font-size:15px;padding:6px 12px;border-radius:999px;border-width:2px}
 .src{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted);flex-wrap:wrap}
-.src button{font-size:14px;padding:6px 12px;border-radius:999px;border-width:2px}
+.src button{font-size:14px;padding:6px 11px;border-radius:999px;border-width:2px}
+.srcLbl{width:100%;font-size:13px}
 .src button.on{background:#e9f1fc;border-color:var(--p1);color:var(--p1d)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.seg button{font-size:15px;padding:11px 0;white-space:nowrap;letter-spacing:-.3px}
+.seg button{font-size:15px;padding:8px 2px 9px;white-space:nowrap;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0}
+.seg button i{font-style:normal;font-size:22px;line-height:1.1}
 .seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 .netrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.netrow button{font-size:17px;padding:13px 0}
-#joinNo{text-align:center;letter-spacing:8px;font-size:26px}
+.netrow button{font-size:16px;padding:9px 4px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap;min-width:0}
+.netrow button i{font-style:normal;font-size:22px;line-height:1.1}
+#topic::placeholder,#myName::placeholder,#chatIn::placeholder,#rTopic::placeholder{color:#a9b6bd;font-weight:500}
+#joinNo{text-align:center;letter-spacing:6px;font-size:24px}
+#joinNo::placeholder{letter-spacing:0;font-size:16px;color:#a9b6bd;font-weight:500}
 .foot{font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center}
 .portal{position:absolute;top:calc(env(safe-area-inset-top) + 10px);left:10px;padding:8px 14px;font-size:16px;text-decoration:none;color:var(--ink);background:var(--panel);border:2.5px solid var(--line);border-radius:14px}
 /* loading / lobby */
@@ -171,17 +176,18 @@ body:not(.play) #gSet{display:none}
   <button class="topBtn" id="setBtn" aria-label="設定">⚙</button>
   <h1>たわーばとる<small>なんでも積みあげ</small></h1>
   <div class="card">
-    <div class="seg" id="mode"><button data-m="solo">👤 ひとり</button><button data-m="cpu">🤖 CPU</button><button data-m="net">🌐 ネット対戦</button></div>
+    <div class="seg" id="mode"><button data-m="solo"><i>👤</i>ひとり</button><button data-m="cpu"><i>🤖</i>CPU</button><button data-m="net"><i>🌐</i>ネット対戦</button></div>
     <div id="topicHome"><div id="topicBlock" style="display:flex;flex-direction:column;gap:12px">
       <input id="topic" class="tx" type="text" placeholder="お題を入れてね" enterkeyhint="go" autocomplete="off">
       <div class="chips" id="chips"></div>
-      <div class="src" id="srcSeg"><span>画像:</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
+      <div class="src" id="srcSeg"><span class="srcLbl">画像のさがし先（いくつでも）</span><button data-s="wiki">ウィキメディア</button><button data-s="ira">いらすとや</button><button data-s="emo">えもじ</button></div>
     </div></div>
     <div id="lenBox" class="hidden"><div class="lenlbl">何勝先取？</div><div class="seg3" id="lenSeg"><button data-n="1">1勝</button><button data-n="3">3勝</button><button data-n="5">5勝</button></div><div class="lenNote">先手はランダム。お題は先手から交代できめるよ</div></div>
     <div id="netBox" class="hidden" style="display:flex;flex-direction:column;gap:8px">
-      <input id="myName" class="tx" type="text" maxlength="8" placeholder="なまえ" autocomplete="off" style="font-size:17px;padding:10px 12px">
-      <div class="netrow"><button id="mkRoom">🏠 部屋をつくる</button><button id="joinBtn">🚪 部屋に入る</button></div>
-      <div id="joinBox" class="hidden" style="display:flex;gap:8px"><input id="joinNo" class="tx" type="tel" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off"><button id="joinGo" style="width:84px;font-size:17px">入る</button></div>
+      <label for="myName" class="lenlbl" style="margin:0">あなたの名前<span style="font-weight:500">（相手の画面に出るよ）</span></label>
+      <input id="myName" class="tx" type="text" maxlength="8" placeholder="れい：たかし" autocomplete="off" style="font-size:17px;padding:10px 12px">
+      <div class="netrow"><button id="mkRoom"><i>🏠</i>部屋をつくる</button><button id="joinBtn"><i>🚪</i>部屋に入る</button></div>
+      <div id="joinBox" class="hidden" style="display:flex;gap:8px"><input id="joinNo" class="tx" type="tel" inputmode="numeric" maxlength="4" placeholder="ばんごう4けた" autocomplete="off"><button id="joinGo" style="width:84px;font-size:17px">入る</button></div>
     </div>
   </div>
   <button class="big" id="start">はじめる</button>
@@ -296,6 +302,7 @@ body:not(.play) #gSet{display:none}
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.7.1', d:'2026-11-28', items:['📐 「ひとり・CPU・ネット対戦」のボタンを、絵と文字の2段にして見やすくしました','✏️ ネット対戦の名前の欄に「あなたの名前」と出るようにしました','🖼️ 画像のさがし先は、前に選んだ組み合わせをそのまま覚えています']},
   {v:'0.7.0', d:'2026-11-28', items:['🏆 CPU対戦とネット対戦は「1勝・3勝・5勝先取」から選べるようになりました','🪙 先手はランダムで決まり、お題は先手から1ゲームごとに交代できめます','💬 ネット対戦では、お題をえらんでいるあいだもチャットとリアクションができます']},
   {v:'0.6.0', d:'2026-11-28', items:['🤖 CPUと対戦できるようになりました（あそびかたは「ひとり」「CPU」「ネット対戦」の3つに）','🎵 ほのぼのしたBGMと効果音をつけました。設定で音の大きさや振動を変えられます','⚙ 設定と、この更新内容の画面をつけました']},
   {v:'0.5.0', d:'2026-11-28', items:['😊 画像の探し先に「えもじ」を追加。ウィキメディア・いらすとや・えもじを組み合わせて探せます','🏝️ 島を広く、低くしました','🧱 落ちてくるパーツを少し小さくしました']},
