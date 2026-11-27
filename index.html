@@ -221,7 +221,7 @@ body.net #res{justify-content:flex-start;padding-top:calc(env(safe-area-inset-to
 <script>
 (function(){
 'use strict';
-var VERSION = '0.4.1';
+var VERSION = '0.4.2';
 var $ = function(id){ return document.getElementById(id); };
 var PL = planck, PS = 30;  // physics: planck.js (Box2D), 30 units = 1 m
 $('ver').textContent = 'v' + VERSION;
@@ -335,7 +335,7 @@ function makePiece(im, opts){
     if (p[(Y*w + X)*4+3] > 110) { on[ci]++; opaque++; }
   }
   var fr = opaque / (w*h);
-  if (fr < 0.06 || (fr > 0.92 && !opts.force)) return null;
+  if (fr < (opts.minFill || 0.06) || (fr > 0.92 && !opts.force)) return null;
   var m = new Uint8Array(PW*PH);
   for (i = 0; i < PW*PH; i++) m[i] = cnt[i] && on[i]/cnt[i] > 0.5 ? 1 : 0;
   m = dilate(erode(m, PW, PH), PW, PH);
@@ -457,17 +457,25 @@ function hira2kata(s){ return s.replace(/[\u3041-\u3096]/g, function(c){ return 
 function kata2hira(s){ return s.replace(/[\u30a1-\u30f6]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
 var IRA_BAD = /文字|ロゴ|タイトル|フレーム|背景|パターン|アイコン|マーク|イラスト集|セット|まとめ/;
 function iraBig(u){ return u.replace(/\/s\d+(-[a-z])?\//, '/s400/').replace(/=s\d+(-[a-z])?$/, '=s400'); }
-function iraSearch(q){
-  var u = 'https://www.irasutoya.com/feeds/posts/summary?alt=json-in-script&max-results=60&q=' + encodeURIComponent(q);
-  return jsonp(u).then(function(j){
-    var es = (j && j.feed && j.feed.entry) || [];
-    return es.map(function(e){
+// one feed request. Returns the posts and the blog's whole label list
+function iraFeed(path){
+  return jsonp('https://www.irasutoya.com/feeds/posts/summary' + path).then(function(j){
+    var f = (j && j.feed) || {}, es = f.entry || [];
+    var labels = (f.category || []).map(function(c){ return c.term; });
+    var posts = es.map(function(e){
       var th = e.media$thumbnail && e.media$thumbnail.url, link = '';
       (e.link || []).forEach(function(l){ if (l.rel === 'alternate') link = l.href; });
-      return th ? {title:(e.title && e.title.$t) || '', thumb:iraBig(th), link:link} : null;
-    }).filter(function(o){ return o && !IRA_BAD.test(o.title); });
-  }).catch(function(){ return []; });
+      return th ? {title:(e.title && e.title.$t) || '', thumb:iraBig(th), link:link, labels:(e.category || []).map(function(c){ return c.term; })} : null;
+    }).filter(Boolean);
+    return {posts:posts, labels:labels};
+  }).catch(function(){ return {posts:[], labels:[]}; });
 }
+function iraQ(q){ return iraFeed('?alt=json-in-script&max-results=100&q=' + encodeURIComponent(q)); }
+function iraL(label){ return iraFeed('/-/' + encodeURIComponent(label) + '?alt=json-in-script&max-results=150'); }
+// お題 → いらすとやのラベル（カテゴリ）
+var IRA_LABEL = {'くるま':['車','乗り物'], 'どうぶつ':['動物'], 'くだもの':['フルーツ'], 'いす':['家具'], 'とり':['鳥'], 'おかし':['スイーツ'],
+  'ねこ':['猫'], 'いぬ':['犬'], 'さかな':['魚'], 'むし':['虫'], 'はな':['花'], 'やさい':['野菜'], 'のりもの':['乗り物'], 'でんしゃ':['電車'], 'すし':['お寿司'], 'かい':['貝'], 'ぱん':['パン'], 'がっき':['楽器'], 'きょうりゅう':['恐竜'], 'たべもの':['食べ物'], 'おもちゃ':['おもちゃ'], 'かぐ':['家具'], 'かでん':['家電'], 'うちゅう':['宇宙'], 'しょくぶつ':['植物']};
+var IRA_PEOPLE = /人|男性|女性|男の子|女の子|子供|子ども|こども|赤ちゃん|おじいさん|おばあさん|家族|夫婦|会社員|学生|先生|お母さん|お父さん|カップル|店員|選手/;
 var IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0};
 function iraDiag(){ var d = $('loadDiag'); if (!d) return; var t = IRA_STAT; d.textContent = 'いらすとや：記事 ' + t.posts + '件 ・ 画像OK ' + (t.direct + t.proxy) + (t.proxy ? '（中継 ' + t.proxy + '）' : '') + ' ・ 読めない ' + t.fail + (t.shape ? ' ・ 形にできない ' + t.shape : ''); }
 function readable(im){ try { var c = document.createElement('canvas'); c.width = c.height = 1; var x = c.getContext('2d'); x.drawImage(im, 0, 0, 1, 1); x.getImageData(0, 0, 1, 1); return true; } catch(e) { return false; } }
@@ -478,31 +486,52 @@ function loadIra(url){
 }
 function searchIra(topic, cb, my, used){
   IRA_STAT = {posts:0, direct:0, proxy:0, fail:0, shape:0}; iraDiag();
-  var base = topicQuery(topic), qs = [];
-  [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && qs.indexOf(q) < 0) qs.push(q); });
-  var seen = {}, fresh = [], old = [], qi = 0, busy = 0, done = false, tainted = 0, tried = 0;
-  function finish(){ if (done || my !== job) return; done = true; if (tried && tainted === tried && !POOL.length) toast('いらすとやの画像は、形が読み取れなかったよ'); cb.done(); }
-  function next(){ return fresh.length ? fresh.shift() : (qi >= qs.length ? old.shift() : null); }
+  var base = topicQuery(topic), vars = [];
+  [topic, base, hira2kata(topic), kata2hira(topic), hira2kata(base)].forEach(function(q){ if (q && vars.indexOf(q) < 0) vars.push(q); });
+  var wantPeople = IRA_PEOPLE.test(topic);
+  iraQ(vars[0]).then(function(first){
+    if (my !== job) return;
+    var lbs = (IRA_LABEL[topic] || IRA_LABEL[kata2hira(topic)] || []).slice();
+    vars.forEach(function(v){ if (first.labels.indexOf(v) >= 0 && lbs.indexOf(v) < 0) lbs.push(v); });
+    var calls = lbs.map(iraL).concat(vars.slice(1).map(iraQ));
+    return Promise.all(calls).then(function(rest){
+      if (my !== job) return;
+      var best = {};
+      [first].concat(rest).forEach(function(r){ r.posts.forEach(function(p){
+        if (IRA_BAD.test(p.title) || (!wantPeople && IRA_PEOPLE.test(p.title))) return;
+        var sc = 0;
+        if (p.labels.some(function(l){ return lbs.indexOf(l) >= 0; })) sc += 3;
+        if (vars.some(function(v){ return p.title.indexOf(v) >= 0; })) sc += 2;
+        if (!best[p.thumb] || best[p.thumb].sc < sc) best[p.thumb] = {p:p, sc:sc, r:Math.random()};
+      }); });
+      var list = Object.keys(best).map(function(k){ return best[k]; });
+      IRA_STAT.posts = list.length; iraDiag();
+      // unused first, then the most relevant, mixed up within the same relevance
+      list.sort(function(a, b){ return ((used[a.p.thumb] ? 1 : 0) - (used[b.p.thumb] ? 1 : 0)) || (b.sc - a.sc) || (a.r - b.r); });
+      runIra(list.map(function(x){ return x.p; }), cb, my, used);
+    });
+  });
+}
+function runIra(queue, cb, my, used){
+  var busy = 0, done = false;
+  function finish(){ if (done || my !== job) return; done = true; cb.done(); }
   function pump(){
     if (my !== job || done) return;
     if (POOL.length >= TARGET) return finish();
     var o;
-    while (busy < 4 && (o = next())) {
+    while (busy < 4 && POOL.length + busy < TARGET + 2 && (o = queue.shift())) {
       busy++;
       (function(o){
         loadIra(o.thumb).then(function(r){
           if (my !== job || POOL.length >= TARGET) return;
-          tried++; IRA_STAT[r.via]++;
-          var pc = makePiece(r.im, {});
-          if (!pc) IRA_STAT.shape++;
-          if (pc) { pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc); }
-        }).catch(function(){ tried++; tainted++; IRA_STAT.fail++; }).then(function(){ busy--; iraDiag(); pump(); });
+          IRA_STAT[r.via]++;
+          var pc = makePiece(r.im, {minFill:0.1});
+          if (!pc) { IRA_STAT.shape++; return; }
+          pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url; used[o.thumb] = 1; POOL.push(pc); cb.progress(pc);
+        }).catch(function(){ IRA_STAT.fail++; }).then(function(){ busy--; iraDiag(); pump(); });
       })(o);
     }
-    if (busy === 0 && !fresh.length) {
-      if (qi < qs.length) { iraSearch(qs[qi++]).then(function(list){ list.forEach(function(o){ if (!seen[o.thumb]) { seen[o.thumb] = 1; IRA_STAT.posts++; (used[o.thumb] ? old : fresh).push(o); } }); iraDiag(); pump(); }); }
-      else if (!old.length) finish();
-    }
+    if (busy === 0 && !queue.length) finish();
   }
   pump();
 }
