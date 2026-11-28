@@ -433,6 +433,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.6', d:'2026-11-28', items:['🔧 v0.14.5 でホーム画面がうまく表示されなかったのを直しました']},
   {v:'0.14.5', d:'2026-11-28', items:['🎲 ウィキメディアで同じお題をさがしたとき、毎回同じ画像ばかりにならないようにしました（関係のありそうな画像の中から、毎回ちがう組み合わせで選びます）']},
   {v:'0.14.4', d:'2026-11-28', items:['🎯 ウィキメディアで、お題に関係のある画像が出やすくなりました。お題のテーマの分類（たとえば「お酒」なら酒類の分類）に入っている画像を先にさがします']},
   {v:'0.14.3', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、分類をもう一段たどってさがすようにしました（「ワインボトル」→「ワイン」のように）。お題の言葉になる画像がさらに減ります']},
@@ -775,10 +776,10 @@ function candWiki(topic, used){
     // pictures filed under the topic's category (and its sub-categories) come first: they are about the topic for sure
     if (cat) qs.push('deepcat:"' + cat + '" filemime:png', 'incategory:"' + cat + '" filemime:png', 'deepcat:"' + cat + '" white background');
     qs.push(en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated');
-    var N = qs.length;
+    var N = qs.length;   // each pick gets a pinch of chance, so the same topic brings different pictures each time
     return Promise.all(qs.map(commons)).then(function(rs){
       var seen = {}, list = [];
-      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(N - qi) * 100 - k + Math.random() * 45, o:o}); });   // a pinch of chance, so the same topic brings different pictures each time });
+      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(N - qi) * 100 - k + Math.random() * 45, o:o}); }); });
       return rankList(list, used);
     });
   });
