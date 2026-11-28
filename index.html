@@ -170,6 +170,15 @@ body:not(.play) #gSet{display:none}
 body.cel #altB{display:none}
 .cs{max-height:86vh;overflow:auto;font-size:14px;line-height:1.6}
 .cs h2{font-size:21px;margin:0 0 8px}.cs h3{font-size:15px;margin:12px 0 2px}.cs ul{margin:0;padding-left:20px}.cs p{margin:0}
+#netWait{position:fixed;inset:0;z-index:60;background:rgba(40,52,60,.45);display:flex;align-items:center;justify-content:center;padding:20px}
+#netWait.hidden{display:none}
+#netWait .nwc{background:var(--panel);border-radius:22px;padding:20px 18px 14px;max-width:340px;width:100%;text-align:center;box-shadow:0 6px 0 rgba(59,74,84,.15)}
+#nwTop{font-size:19px;font-weight:900;margin-bottom:6px}
+#nwTx{font-size:14px;color:var(--muted);line-height:1.6}
+.nwDots{display:flex;gap:8px;justify-content:center;margin:14px 0}
+.nwDots i{width:10px;height:10px;border-radius:50%;background:var(--accent);animation:nwd 1.2s ease-in-out infinite}
+.nwDots i:nth-child(2){animation-delay:.2s}.nwDots i:nth-child(3){animation-delay:.4s}
+@keyframes nwd{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
 #coach{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);width:min(92vw,380px);background:rgba(255,253,247,.97);border:3px solid var(--accent);border-radius:20px;padding:12px 14px 10px;z-index:30;box-shadow:0 5px 0 rgba(59,74,84,.12);display:none}
 body.tut.play #coach{display:block}
 body.tut.play.cel #coach,body.tut.play.result #coach{display:none}
@@ -303,6 +312,14 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
   <button class="sub" id="chgC">戻る</button>
 </div></div>
 <div id="coach"><div id="coachTx"></div><div id="coachRow"><span id="coachDots"></span><button id="coachNext" class="hidden">つぎへ ›</button><button id="coachSkip">スキップ</button></div></div>
+<div class="ov hidden" id="rsOv"><div class="sheet" style="text-align:center">
+  <div style="font-size:42px;line-height:1.1">⏯️</div>
+  <h2 style="margin:6px 0 4px">とちゅうのゲームがあるよ</h2>
+  <div id="rsTx" style="color:var(--muted);font-size:15px;line-height:1.6;margin-bottom:14px"></div>
+  <button class="big" id="rsYes">つづきから</button>
+  <button class="sub" id="rsNo" style="margin-top:10px">やめて ホームへ</button>
+</div></div>
+<div id="netWait" class="hidden"><div class="nwc"><div id="nwTop"></div><div id="nwTx"></div><div class="nwDots"><i></i><i></i><i></i></div><button class="sub" id="nwQuit">やめる</button></div></div>
 <div class="ov hidden" id="tutOv"><div class="sheet" style="text-align:center">
   <div style="font-size:46px;line-height:1.1">🔰</div>
   <h2 style="margin:6px 0 4px">はじめてかな？</h2>
@@ -433,6 +450,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.15.0', d:'2026-11-28', items:['⏯️ とちゅうで画面を閉じても、つぎに開いたとき「つづきから」遊べるようになりました（ひとり・CPU・ネット対戦）','📶 ネット対戦でつながりが切れても、すぐにはおわらず、つなぎなおしを待つようにしました。もどってきたら、つづきから遊べます']},
   {v:'0.14.7', d:'2026-11-28', items:['📶 ネット対戦の通信量を減らしました。パーツが止まっている間は、ほとんど通信しません。ウィキメディアなどの絵も軽い形式で送ります']},
   {v:'0.14.6', d:'2026-11-28', items:['🔧 v0.14.5 でホーム画面がうまく表示されなかったのを直しました']},
   {v:'0.14.5', d:'2026-11-28', items:['🎲 ウィキメディアで同じお題をさがしたとき、毎回同じ画像ばかりにならないようにしました（関係のありそうな画像の中から、毎回ちがう組み合わせで選びます）']},
@@ -1136,6 +1154,14 @@ function pname(p){
 }
 
 function newRound(starter){
+  resetRound(starter);
+  rsPool();
+  if (isHost()) {
+    if (NET) send({t:'round', st:turnP, wins:MATCH ? MATCH.wins : [0, 0]});
+    newTurn();
+  } else { state = 'wait'; updHud(); rsGuest(); }
+}
+function resetRound(starter){
   roundNo++;
   if (isHost()) {
     world = PL.World({gravity:PL.Vec2(0, CFG.g)});
@@ -1145,10 +1171,6 @@ function newRound(starter){
   CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; $('pName').innerHTML = ''; topY = GROUND_Y; hintOn = true; LOG = {t0:Date.now(), rot:0, hmax:0}; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
-  if (isHost()) {
-    if (NET) send({t:'round', st:turnP, wins:MATCH ? MATCH.wins : [0, 0]});
-    newTurn();
-  } else { state = 'wait'; updHud(); }
 }
 var CFG = {g:20, fric:2, gfric:2, ldamp:1, adamp:6, sub:2, vi:10, pit:6, vmax:6, gap:15};
 if (window.__cfg) for (var ck in window.__cfg) CFG[ck] = window.__cfg[ck];
@@ -1171,6 +1193,7 @@ function beginAim(pi, sc){
   state = 'aim'; updHud();
   LOG.hmax = Math.max(LOG.hmax, GROUND_Y - topY);
   altCheck(); if (TUT) tutTick();
+  rsSavePlay();
 }
 function updHud(){
   var t = $('turn'), col;
@@ -1208,7 +1231,7 @@ $('quit').onclick = function(){
   if (Date.now() - quitArm > 2500) { quitArm = Date.now(); toast('もう一回おすと やめるよ'); return; }
   leave();
 };
-function leave(){ if (TUT) { tutEnd(); return; } if ((state === 'aim' || state === 'drop' || state === 'wait' || state === 'sent') && count > 0) sendLog('quit'); state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
+function leave(){ if (TUT) { tutEnd(); return; } rsClear(); hideNetWait(); if ((state === 'aim' || state === 'drop' || state === 'wait' || state === 'sent') && count > 0) sendLog('quit'); state = 'idle'; CPU = null; MATCH = null; job++; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); if (NET) netClose(true); NET = null; setNetClass(); show('home'); }
 addEventListener('keydown', function(e){
   if (document.activeElement && document.activeElement.tagName === 'INPUT') return;
   if (state !== 'aim' || !myTurn()) return;
@@ -1239,7 +1262,7 @@ function gameOver(who){
   else if (MODE === 'solo') { var b = S.best[TOPIC] || 0; if (count > b) { S.best[TOPIC] = count; save(); } NEWBEST = count > b; }
   else if (MODE === 'cpu') { MATCH.wins[1 - who]++; S.wins[1 - who]++; save(); cpuTalk(who === 0 ? 'youFell' : 'iFell'); }
   else { MATCH.wins[1 - who]++; NET.want = [false, false]; send({t:'over', loser:who, n:count, wins:MATCH.wins}); }
-  updHud(); gameEnded();
+  updHud(); gameEnded(); if (!TUT) rsAfterGame();
 }
 var NEWBEST = false;
 function altLine(){ if (!altLv) return ''; var a = ALT[altLv - 1]; return '<div class="mstat">' + a.t.split(' ')[0] + ' ' + a.r + 'まで積めたよ</div>'; }
@@ -1377,6 +1400,92 @@ function sendLog(ev, extra){
 }
 function gameEnded(){ if (TUT) return; S.games = (S.games || 0) + 1; save(); sendLog('over'); }
 
+/* ---------- picking up where you left off (the app was closed mid-game) ---------- */
+// the host (or a local game) keeps the game at each turn; a guest keeps which room it was in
+var RKEY = 'tower-battle-resume', RPOOL = 'tower-battle-resume-pool';
+if (/[?&]bc\b/.test(location.search)) { var fid = (location.search.match(/[?&]id=(\w+)/) || [])[1]; if (fid) { RKEY += '-' + fid; RPOOL += '-' + fid; } }   // test mode: two windows share one storage
+function rsGet(){ try { var r = JSON.parse(localStorage.getItem(RKEY) || 'null'); if (r && Date.now() - r.at < 12 * 3600e3) return r; } catch(e) {} return null; }
+function rsClear(){ try { localStorage.removeItem(RKEY); localStorage.removeItem(RPOOL); } catch(e) {} }
+function rsPut(o){ o.at = Date.now(); try { localStorage.setItem(RKEY, JSON.stringify(o)); } catch(e) {} }
+function rsPool(){ if (TUT || !isHost()) return; try { localStorage.setItem(RPOOL, JSON.stringify({topic:TOPIC, pool:POOL.map(function(pc){ return pc._pd || (pc._pd = pieceData(pc)); })})); } catch(e) {} }
+function rsNet(){ return NET ? {room:NET.room, names:NET.names} : null; }
+function rsSavePlay(){
+  if (TUT || !isHost() || !cur) return;
+  rsPut({kind:'play', mode:MODE, topic:TOPIC, bodies:placed.filter(function(b){ return b.plugin.id; }).map(function(b){ return [b.plugin.id, b.plugin.pi, b.plugin.sc, b.position.x, b.position.y, b.angle]; }),
+    count:count, turnP:turnP, cur:[cur.plugin.pi, cur.plugin.sc], bag:bag.slice(), idSeq:idSeq, match:MATCH, log:LOG, alt:altLv, net:rsNet()});
+}
+function rsAfterGame(){
+  if (!isHost()) return;
+  if (MODE === 'solo' || matchOver()) { rsClear(); return; }
+  rsPut({kind:'between', mode:MODE, match:MATCH, net:rsNet()});
+}
+function rsGuest(){ if (NET && NET.role === 'guest' && MATCH) rsPut({kind:'guest', mode:'net', room:NET.room, names:NET.names, match:MATCH}); }
+function rsDesc(r){
+  var m = r.match, sc = m ? '（' + (m.wins[0] | 0) + ' - ' + (m.wins[1] | 0) + '・' + m.len + '勝先取）' : '';
+  if (r.mode === 'solo') return 'ひとりで「' + esc(r.topic || '') + '」を ' + (r.count | 0) + ' こ積んだところ';
+  if (r.mode === 'cpu') return 'CPUと対戦中 ' + sc;
+  var nm = r.kind === 'guest' ? (r.names && r.names[0]) : (r.net && r.net.names && r.net.names[1]);
+  return esc(nm || '相手') + 'と ネット対戦中 ' + sc + '<br><small>部屋 ' + esc(r.kind === 'guest' ? r.room : (r.net && r.net.room)) + '。相手もゲームを開いていれば、つづきから遊べるよ</small>';
+}
+function rsOffer(){
+  var r = rsGet(); if (!r) return;
+  $('rsTx').innerHTML = rsDesc(r);
+  $('rsOv').classList.remove('hidden');
+  $('rsYes').onclick = function(){ $('rsOv').classList.add('hidden'); ac(); rsRestore(r); };
+  $('rsNo').onclick = function(){ $('rsOv').classList.add('hidden'); rsClear(); };
+}
+function rsRestore(r){
+  setMode(r.mode); MATCH = r.match || null; job++;
+  if (r.kind === 'guest') {
+    NET = {role:'guest', me:1, names:r.names || ['', ''], want:[false, false], open:false, room:r.room, inPieces:null};
+    if (!NET.names[1]) NET.names[1] = getName();
+    setNetClass(); $('roomTagNo').textContent = '部屋 ' + r.room;
+    showNetWait('📶 つなぎなおし', '部屋 ' + r.room + ' に つないでるよ…');
+    guestConnect(); return;
+  }
+  if (r.net) {
+    NET = {role:'host', me:0, names:r.net.names || ['', ''], want:[false, false], open:false, ready:false, room:r.net.room};
+    setNetClass(); $('roomTagNo').textContent = '部屋 ' + r.net.room;
+    showNetWait('📶 ' + (NET.names[1] || '相手') + 'を待ってるよ', '部屋 ' + r.net.room + ' をひらいたよ。相手もゲームを開くと、つづきから遊べるよ');
+    hostOpen(r.net.room);
+  } else NET = null;
+  if (r.kind === 'between') {
+    MATCH.game++;
+    if (!NET) nextGame();
+    else show('home');   // net: the next game starts when the other side is back (resync)
+    return;
+  }
+  var pp = null; try { pp = JSON.parse(localStorage.getItem(RPOOL) || 'null'); } catch(e) {}
+  if (!pp || !pp.pool || !pp.pool.length) { toast('つづきのデータが見つからなかったよ'); rsClear(); leave(); return; }
+  show('load'); $('loadTx').textContent = 'つづきを よういしてるよ…'; $('thumbs').innerHTML = ''; $('loadN').textContent = ''; $('loadDiag').textContent = '';
+  $('loadGo').classList.add('hidden'); $('loadRe').classList.add('hidden'); $('loadBack').classList.add('hidden');
+  buildPieces(pp.pool).then(function(ps){
+    POOL = ps; TOPIC = r.topic || pp.topic || ''; CREDITS = ps.filter(function(p){ return p.credit; }).map(function(p){ return p.credit; }); $('credBtn').classList.toggle('hidden', !CREDITS.length);
+    restoreRound(r);
+  }, function(){ toast('パーツが読みこめなかったよ'); rsClear(); leave(); });
+}
+function restoreRound(r){
+  resetRound(r.turnP | 0);
+  idSeq = r.idSeq | 0; bag = (r.bag || []).slice(); if (r.log) LOG = r.log;
+  (r.bodies || []).forEach(function(q){
+    if (!POOL[q[1]]) return;
+    var b = makeBody(q[1], q[2]); setAng(b, q[5]); setPos(b, q[3], q[4]);
+    b.plugin.id = q[0]; b.plugin.tg = {x:q[3], y:q[4], a:q[5]}; byId[q[0]] = b; placed.push(b); if (world) addPhysics(b);
+    idSeq = Math.max(idSeq, q[0]);
+  });
+  count = r.count | 0; computeTop();
+  altLv = r.alt | 0; altT = []; for (var i = 0; i < altLv; i++) altT[i] = -99;
+  camTop = camTarget = Math.min(baseCam(), topY - 300); hintOn = false;
+  beginAim(r.cur[0], r.cur[1]);
+  if (MODE === 'cpu' && turnP === 1) cpuStart();
+  updHud();
+}
+function showNetWait(t, sub){ $('nwTop').textContent = t; $('nwTx').textContent = sub || ''; $('netWait').classList.remove('hidden'); }
+function netWaitText(sub){ $('nwTx').textContent = sub; }
+function hideNetWait(){ $('netWait').classList.add('hidden'); }
+$('nwQuit').onclick = function(){ hideNetWait(); leave(); };
+setTimeout(rsOffer, 400);
+
 /* ---------- result ---------- */
 function miniThumbs(){ return '<div class="mini" id="miniT"></div>'; }
 function fillMini(){ var m = $('miniT'); if (!m) return; POOL.slice(0, 10).forEach(function(pc){ m.appendChild(thumbCanvas(pc)); }); }
@@ -1478,34 +1587,97 @@ function fakeChannel(room, role){
 function wireConn(conn){
   NET.conn = conn;
   conn.on('data', onNet);
-  conn.on('close', function(){ if (!NET || NET.leaving) return; NET.open = false; toast('相手がいなくなったよ'); setTimeout(function(){ if (NET && !NET.open) { state = 'idle'; NET = null; setNetClass(); show('home'); } }, 1600); });
+  conn.on('close', function(){ if (!NET || NET.leaving || NET.conn !== conn) return; lineLost(); });
+}
+// the line dropped (or went silent). In a match, wait for the other side to come back instead of giving up
+function lineLost(){
+  if (!NET || NET.leaving) return;
+  NET.open = false;
+  if (!MATCH) { toast('相手がいなくなったよ'); setTimeout(function(){ if (NET && !NET.open) { state = 'idle'; NET = null; setNetClass(); show('home'); } }, 1600); return; }
+  if (NET.role === 'host') showNetWait('📶 ' + (NET.names[1] || '相手') + 'との つながりが切れたよ', 'もどってくるのを待ってるよ…（部屋 ' + NET.room + '）');
+  else { showNetWait('📶 つながりが切れたよ', '部屋 ' + NET.room + ' に つなぎなおしてるよ…'); guestRetry(); }
+}
+// guest: knock on the room again every few seconds
+function guestRetry(){
+  if (!NET || NET.open || NET.leaving || NET.role !== 'guest') return;
+  clearTimeout(NET.retryT); NET.retryT = setTimeout(guestRetry, 3000);
+  if (FAKE) { if (NET.fakeCh) NET.fakeCh.raw.postMessage({to:'host', k:'join'}); return; }
+  var peer = NET.peer;
+  if (!peer || peer.destroyed) { guestPeer(); return; }
+  if (peer.disconnected) { try { peer.reconnect(); } catch(e) {} return; }
+  connectHost();
+}
+function guestPeer(){
+  var peer = new Peer(); NET.peer = peer;
+  peer.on('open', function(){ if (NET && NET.peer === peer) connectHost(); });
+  peer.on('error', function(err){
+    if (!NET || NET.peer !== peer) return;
+    if (MATCH) return;   // coming back to a match: keep knocking
+    toast(err.type === 'peer-unavailable' ? '部屋が見つからないよ' : 'つながらなかったよ…（' + err.type + '）');
+    if (!NET.open) { netClose(false); NET = null; setNetClass(); show('home'); }
+  });
+}
+function connectHost(){
+  if (!NET || NET.open) return;
+  var conn = NET.peer.connect(PREFIX + NET.room, {reliable:true});
+  conn.on('open', function(){ if (!NET || NET.open) { try { conn.close(); } catch(e) {} return; } guestOpened(conn); });
+}
+function guestOpened(conn){
+  NET.open = true; NET.lastRx = Date.now(); clearTimeout(NET.retryT); wireConn(conn);
+  send({t:'hello', name:NET.names[1], resume:MATCH ? 1 : 0});
+  if (MATCH) netWaitText('つながったよ！ つづきを よういしてるよ…');
+  else { lobbyStatus('つながったよ！ 部屋の人がはじめるのを待ってるよ'); show('lobby'); }
 }
 function makeRoom(){
   getName(); MATCH = null;
   NET = {role:'host', me:0, names:['', ''], want:[false, false], open:false, ready:false};
   NET.names[0] = getName(); setNetClass();
+  openLobbyHost();
+  hostOpen(null);
+}
+// open the room. fixedNo: coming back to the same room after the app was closed (the number may stay busy for a few seconds)
+function hostOpen(fixedNo){
   var tries = 0;
   function attempt(){
-    var no = String(1000 + Math.floor(Math.random() * 9000));
+    var no = fixedNo || String(1000 + Math.floor(Math.random() * 9000));
     NET.room = no;
     if (FAKE) {
       var ch = fakeChannel(no, 'host'); NET.peer = {destroy:function(){ ch.close(); }};
-      ch.on('join', function(){ ch.raw.postMessage({to:'guest', k:'hi'}); NET.open = true; wireConn(ch); send({t:'hello', name:NET.names[0]}); lobbyStatus(); });
+      ch.on('join', function(){ ch.raw.postMessage({to:'guest', k:'hi'}); acceptConn(ch); });
+      if (fixedNo) ch.raw.postMessage({to:'guest', k:'hi'});   // wake a guest who is waiting for us
       roomReady(no); return;
     }
     var peer = new Peer(PREFIX + no); NET.peer = peer;
     peer.on('open', function(){ roomReady(no); });
+    peer.on('disconnected', function(){ if (NET && NET.peer === peer && !NET.leaving) { try { peer.reconnect(); } catch(e) {} } });
     peer.on('error', function(err){
-      if (err.type === 'unavailable-id' && ++tries < 6) { try { peer.destroy(); } catch(e) {} attempt(); return; }
-      if (NET && !NET.open) { toast('つながらなかったよ…（' + err.type + '）'); }
+      if (err.type === 'unavailable-id') {
+        try { peer.destroy(); } catch(e) {}
+        if (fixedNo) { if (++tries < 20 && NET && !NET.leaving) setTimeout(attempt, 2000); else netWaitText('部屋 ' + fixedNo + ' をひらけなかったよ'); return; }
+        if (++tries < 6) { attempt(); return; }
+      }
+      if (NET && !NET.open && !MATCH) { toast('つながらなかったよ…（' + err.type + '）'); }
     });
     peer.on('connection', function(conn){
-      if (NET.conn && NET.open) { conn.on('open', function(){ conn.send({t:'full'}); setTimeout(function(){ conn.close(); }, 300); }); return; }
-      conn.on('open', function(){ NET.open = true; wireConn(conn); send({t:'hello', name:NET.names[0]}); lobbyStatus(); });
+      conn.on('open', function(){
+        if (!NET || NET.leaving) { conn.close(); return; }
+        if (!NET.open) { acceptConn(conn); return; }
+        // the old line still looks alive: let the newcomer in only if it is the same player coming back
+        var seen = false;
+        conn.on('data', function(m){
+          if (seen) return; seen = true;
+          if (m && m.t === 'hello' && m.resume && MATCH && NET) { var old = NET.conn; NET.open = false; acceptConn(conn); onNet(m); try { old.close(); } catch(e) {} }
+          else { conn.send({t:'full'}); setTimeout(function(){ conn.close(); }, 300); }
+        });
+      });
     });
   }
-  openLobbyHost();
   attempt();
+}
+function acceptConn(conn){
+  if (NET.open && NET.conn === conn && NET.resync) return;
+  NET.open = true; NET.lastRx = Date.now(); wireConn(conn); send({t:'hello', name:NET.names[0]});
+  if (MATCH) resync(); else lobbyStatus();
 }
 function roomReady(no){ $('roomNo').textContent = no; $('roomTagNo').textContent = '部屋 ' + no; lobbyStatus(); }
 function openLobbyHost(){
@@ -1544,22 +1716,31 @@ function joinRoom(){
   $('lobTop').textContent = '部屋 ' + no; $('roomNo').classList.add('hidden'); $('copyNo').classList.add('hidden');
   $('lobGo').classList.add('hidden'); $('lobLenBox').classList.add('hidden'); $('lobLenTx').classList.add('hidden');
   show('lobby'); lobbyStatus('つないでるよ…');
+  guestConnect();
+}
+function guestConnect(){
   if (FAKE) {
-    var ch = fakeChannel(no, 'guest'); NET.peer = {destroy:function(){ ch.close(); }};
-    ch.on('open', function(){ NET.open = true; wireConn(ch); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ 部屋の人がはじめるのを待ってるよ'); show('lobby'); });
+    var ch = fakeChannel(NET.room, 'guest'); NET.fakeCh = ch; NET.peer = {destroy:function(){ ch.close(); }};
+    ch.on('open', function(){ if (NET && !NET.open) guestOpened(ch); });
     ch.raw.postMessage({to:'host', k:'join'});
+    if (MATCH) { clearTimeout(NET.retryT); NET.retryT = setTimeout(guestRetry, 3000); }
     return;
   }
-  var peer = new Peer(); NET.peer = peer;
-  peer.on('open', function(){
-    var conn = peer.connect(PREFIX + no, {reliable:true});
-    conn.on('open', function(){ NET.open = true; wireConn(conn); send({t:'hello', name:NET.names[1]}); lobbyStatus('つながったよ！ 部屋の人がはじめるのを待ってるよ'); show('lobby'); });
-  });
-  peer.on('error', function(err){
-    if (!NET) return;
-    toast(err.type === 'peer-unavailable' ? '部屋が見つからないよ' : 'つながらなかったよ…（' + err.type + '）');
-    if (!NET.open) { netClose(false); NET = null; setNetClass(); show('home'); }
-  });
+  guestPeer();
+  if (MATCH) { clearTimeout(NET.retryT); NET.retryT = setTimeout(guestRetry, 4000); }
+}
+// host: the other side is (back) on the line during a match → bring them up to where we are
+function resync(){
+  hideNetWait();
+  var phase = (state === 'aim' || state === 'drop') && POOL.length ? 'play' : state === 'over' ? 'over' : 'between';
+  send({t:'resume', match:MATCH, names:NET.names, phase:phase, topic:TOPIC, loser:loser, n:count});
+  if (phase === 'play') { NET.resync = true; sendPieces(); }
+  else if (phase === 'over') { NET.want = [false, false]; if (!$('res').classList.contains('hidden')) renderResult(); }
+  else { NET.want = [false, false]; send({t:'next', game:MATCH.game}); nextGame(); }
+}
+function sendSync(){
+  send({t:'sync', tp:turnP, n:count, top:topY, alt:altLv, b:placed.filter(function(b){ return b.plugin.id; }).map(function(b){ return [b.plugin.id, b.plugin.pi, b.plugin.sc, b.position.x, b.position.y, b.angle]; })});
+  if (state === 'aim' && cur) send({t:'turn', pi:cur.plugin.pi, sc:cur.plugin.sc, tp:turnP, n:count, top:topY});
 }
 function buildPieces(list){
   return Promise.all(list.map(function(d){
@@ -1573,14 +1754,28 @@ function buildPieces(list){
 function onNet(m){
   if (!NET || !m || typeof m !== 'object') return;
   var host = NET.role === 'host', them = 1 - NET.me;
+  NET.lastRx = Date.now();
   switch (m.t) {
-    case 'hello': NET.names[them] = String(m.name || '').slice(0, 8); lobbyStatus(); if (host) send({t:'len', n:S.matchLen}); updHud(); break;
+    case 'p': break;
+    case 'resume': if (!host) {
+      MATCH = m.match; if (m.names) { NET.names[0] = m.names[0] || NET.names[0]; }
+      NET.want = [false, false]; hideNetWait(); rsGuest();
+      if (m.phase === 'play') { show('waitL'); $('waitTop').textContent = 'つづきから！'; $('waitTx2').textContent = 'パーツを受け取ってるよ…'; $('waitThumbs').innerHTML = ''; }
+      else if (m.phase === 'over') { resetRound(0); TOPIC = m.topic || TOPIC; count = m.n | 0; loser = m.loser; state = 'over'; CEL = null; showResult(); }
+    } break;
+    case 'sync': if (!host) {
+      resetRound(m.tp | 0);
+      (m.b || []).forEach(function(q){ if (!POOL[q[1]]) return; var b = makeBody(q[1], q[2]); setAng(b, q[5]); setPos(b, q[3], q[4]); b.plugin.id = q[0]; b.plugin.tg = {x:q[3], y:q[4], a:q[5]}; byId[q[0]] = b; placed.push(b); });
+      count = m.n | 0; topY = m.top; altLv = m.alt | 0; altT = []; for (var ai = 0; ai < altLv; ai++) altT[ai] = -99;
+      camTop = camTarget = Math.min(baseCam(), topY - 300); hintOn = false; state = 'wait'; updHud();
+    } break;
+    case 'hello': NET.names[them] = String(m.name || '').slice(0, 8); if (!MATCH) lobbyStatus(); if (host && !MATCH) send({t:'len', n:S.matchLen}); updHud(); break;
     case 'len': if (!host) { $('lobLenTx').textContent = (m.n | 0) + '勝先取'; $('lobLenTx').classList.remove('hidden'); } break;
     case 'match': if (!host) { MATCH = {len:m.len | 0, first:m.first | 0, game:0, wins:[0, 0]}; toss(nextGame); } break;
     case 'next': if (!host) { MATCH.game = m.game | 0; NET.want = [false, false]; nextGame(); } break;
     case 'topic': $('waitTop').textContent = 'お題は「' + String(m.topic || '').slice(0, 30) + '」！'; $('waitTx2').textContent = pname(them) + 'がパーツをさがしてるよ…'; break;
     case 'full': toast('その部屋はいっぱいだよ'); leave(); break;
-    case 'bye': NET.leaving = true; toast('相手が部屋を出たよ'); setTimeout(function(){ state = 'idle'; NET = null; setNetClass(); show('home'); }, 1400); break;
+    case 'bye': rsClear(); hideNetWait(); NET.leaving = true; toast('相手が部屋を出たよ'); setTimeout(function(){ state = 'idle'; NET = null; setNetClass(); show('home'); }, 1400); break;
     case 'chat': chatLine(them, String(m.s || '').slice(0, 40)); sfx('blip'); break;
     case 'rx': bubble(them, m.k | 0); sfx('pop'); break;
     case 'fx': if (!host) { sfx(m.k, m.v); if (m.k === 'land') vib(8); } break;
@@ -1593,7 +1788,7 @@ function onNet(m){
         ps.forEach(function(pc){ $('waitThumbs').appendChild(thumbCanvas(pc)); });
         if (host) newRound(chooser()); else send({t:'ready'});
       }); } break;
-    case 'round': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; NET.want = [false, false]; newRound(m.st | 0); } break;
+    case 'round': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; NET.want = [false, false]; hideNetWait(); newRound(m.st | 0); } break;
     case 'turn': if (!host) { turnP = m.tp | 0; count = m.n | 0; topY = m.top; if (POOL[m.pi]) beginAim(m.pi, m.sc); } break;
     case 's': if (!host) applySnap(m); break;
     case 'add': if (!host) {
@@ -1601,10 +1796,10 @@ function onNet(m){
       setAng(b, m.a); setPos(b, m.x, b.position.y);
       b.plugin.id = m.id; b.plugin.tg = {x:b.position.x, y:b.position.y, a:b.angle}; byId[m.id] = b; placed.push(b); cur = null; state = 'drop'; hintOn = false; updHud(); sfx('drop');
     } break;
-    case 'over': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); gameEnded(); } break;
+    case 'over': if (!host) { if (MATCH && m.wins) MATCH.wins = m.wins; count = m.n | 0; NET.want = [false, false]; state = 'over'; loser = m.loser; overT = 0; cur = null; updHud(); gameEnded(); if (matchOver()) rsClear(); else rsGuest(); } break;
     case 'want': NET.want[them] = true; if (state === 'over') renderResult(); checkWant(); break;
     // host side
-    case 'ready': if (host) newRound(chooser()); break;
+    case 'ready': if (host) { if (NET.resync) { NET.resync = false; sendSync(); } else if (state !== 'aim' && state !== 'drop') newRound(chooser()); } break;
     case 'aim': if (host && turnP === 1 && state === 'aim') { curX = +m.x || 0; curAng = +m.a || 0; clampX(); } break;
     case 'drop': if (host && turnP === 1 && state === 'aim') { curX = +m.x || 0; curAng = +m.a || 0; clampX(); NET_DROP = true; doDrop(); NET_DROP = false; } break;
   }
@@ -1698,6 +1893,13 @@ function sendSnap(){
   if (key === snapLast && now - snapT < 2000) return;
   snapLast = key; snapT = now; send(m);
 }
+
+/* ---------- keep-alive: a tiny ping every 3 s; 10 s of silence in a match counts as a lost line ---------- */
+setInterval(function(){
+  if (!NET || NET.leaving) return;
+  if (NET.open) send({t:'p'});
+  if (NET.open && MATCH && NET.lastRx && Date.now() - NET.lastRx > 10000) lineLost();
+}, 3000);
 
 /* ---------- loop ---------- */
 var last = performance.now();
