@@ -433,6 +433,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.1', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、見つけやすくしました。日本語の記事で使われていない画像も、ほかの国のウィキペディアの記事や「何が写っているか」の情報から、日本語の名前をさがします']},
   {v:'0.14.0', d:'2026-11-28', items:['🏷️ 落とすパーツの名前を、上に小さく出すようにしました（どこの画像かもいっしょに出ます）。ウィキメディアの画像は、その画像が使われているウィキペディアの記事の名前を出します','💬 リアクションのふきだしを、LINEと同じく 自分は右・あいては左 にしました','🙂 なかまたちに名前をつけました（まるちゃん・ほしちゃん など）']},
   {v:'0.13.5', d:'2026-11-28', items:['☁️ 「くものうえ」の雲を作りなおしました。大きさのちがう雲がもくもく重なって、ゆっくり流れる雲の海になりました']},
   {v:'0.13.4', d:'2026-11-28', items:['🔟 パーツはいつも最大10こにそろえました。なかまたちだけのときは、13しゅるいの中からランダムに10こ出てきます（「さがしなおす」で入れかわります）']},
@@ -694,7 +695,7 @@ function commons(q){
   return api(u).then(function(j){
     var ps = (j.query && j.query.pages) || [];
     ps.sort(function(a, b){ return (a.index || 0) - (b.index || 0); });
-    return ps.map(function(p){ return {title:p.title, ii:p.imageinfo && p.imageinfo[0]}; })
+    return ps.map(function(p){ return {title:p.title, pid:p.pageid, ii:p.imageinfo && p.imageinfo[0]}; })
       .filter(function(o){ return o.ii && o.ii.thumburl && /png|jpeg/.test(o.ii.mime || '') && !BAD.test(o.title); });
   }).catch(function(){ return []; });
 }
@@ -774,7 +775,8 @@ function loadWiki(c){
     var md = o.ii.extmetadata || {};
     pc.credit = {title:o.title.replace(/^File:/, ''), artist:strip(md.Artist && md.Artist.value), lic:(md.LicenseShortName && md.LicenseShortName.value) || '', url:o.ii.descriptionurl};
     // the file name itself is often gibberish, so name it after the Wikipedia article that uses it
-    return wikiName(o.title).then(function(n){
+    return wikiName(o.title, o.pid).then(function(n){
+      WNAME.tried++; if (n) WNAME.hit++;
       if (n) { pc.name = n; pc.from = 'ウィキペディアの記事より'; } else { pc.name = shortName(topic); pc.from = 'ウィキメディア（お題）'; }
       pc.credit.used = n || ''; return pc;
     });
@@ -786,22 +788,44 @@ function iraName(t){
   t = t.replace(/のイラスト.*$/, '').replace(/イラスト.*$/, '').replace(/のマーク.*$/, '').replace(/の$/, '').trim();
   return shortName(t);
 }
-// the Wikipedia article (Japanese first) that shows this picture. Gives up quietly after a few seconds
-function wikiName(file){
-  var u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&prop=globalusage&gunamespace=0&gusite=jawiki|enwiki&gulimit=60&titles=' + encodeURIComponent(file);
-  var job0 = api(u).then(function(j){
+// a Japanese name for a Wikimedia picture, tried in order (gives up quietly after a few seconds):
+//  1. a Japanese Wikipedia article that shows the picture
+//  2. an article in another Wikipedia that shows it → that subject's Japanese name (Wikidata)
+//  3. what the picture "depicts" (structured data on Commons) → its Japanese name (Wikidata)
+var WNAME = {tried:0, hit:0};
+var WD = 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=labels|sitelinks&languages=ja&sitefilter=jawiki';
+function wdJa(ent){
+  if (!ent || ent.missing !== undefined) return null;
+  var sl = ent.sitelinks && ent.sitelinks.jawiki; if (sl && sl.title) return sl.title;
+  var lb = ent.labels && ent.labels.ja; return lb && lb.value ? lb.value : null;
+}
+function firstEnt(j){ var e = j && j.entities, k; if (!e) return null; for (k in e) if (!/^-/.test(k)) return e[k]; return null; }
+function wikiName(file, pid){
+  var C = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*';
+  var work = api(C + '&prop=globalusage&gunamespace=0&gulimit=200&titles=' + encodeURIComponent(file)).then(function(j){
     var pg = j.query && j.query.pages && j.query.pages[0], gu = (pg && pg.globalusage) || [];
-    var by = function(w){ return gu.filter(function(g){ return g.wiki === w && !/^(List of|一覧|\d)/.test(g.title); }).map(function(g){ return g.title.replace(/_/g, ' '); }).sort(function(a, b){ return a.length - b.length; }); };
-    var ja = by('ja.wikipedia.org'); if (ja.length) return shortName(ja[0]);
-    var en = by('en.wikipedia.org').slice(0, 8); if (!en.length) return null;
-    return api('https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=langlinks&lllang=ja&titles=' + encodeURIComponent(en.join('|')))
-      .then(function(j2){
-        var ps = (j2.query && j2.query.pages) || [], best = null;
-        ps.forEach(function(p){ var l = p.langlinks && p.langlinks[0] && p.langlinks[0].title; if (l && (!best || l.length < best.length)) best = l; });
-        return best ? shortName(best) : null;
-      });
-  }).catch(function(){ return null; });
-  return Promise.race([job0, new Promise(function(r){ setTimeout(function(){ r(null); }, 3500); })]);
+    if (!pid && pg && pg.pageid) pid = pg.pageid;
+    var wp = gu.filter(function(g){ return /\.wikipedia\.org$/.test(g.wiki) && !/^(List of|Liste|一覧|\d)/.test(g.title); });
+    var ja = wp.filter(function(g){ return g.wiki === 'ja.wikipedia.org'; }).map(function(g){ return g.title.replace(/_/g, ' '); }).sort(function(a, b){ return a.length - b.length; });
+    if (ja.length) return shortName(ja[0]);
+    // another language: prefer English, then the shortest title
+    wp.sort(function(a, b){ return (b.wiki === 'en.wikipedia.org') - (a.wiki === 'en.wikipedia.org') || a.title.length - b.title.length; });
+    var tries = wp.slice(0, 3).map(function(g){
+      var site = g.wiki.split('.')[0].replace(/-/g, '_') + 'wiki';
+      return api(WD + '&sites=' + site + '&titles=' + encodeURIComponent(g.title)).then(function(r){ return wdJa(firstEnt(r)); }).catch(function(){ return null; });
+    });
+    return Promise.all(tries).then(function(ns){ for (var i = 0; i < ns.length; i++) if (ns[i]) return shortName(ns[i]); return depicts(); });
+  }).catch(function(){ return depicts(); });
+  function depicts(){
+    if (!pid) return null;
+    return api('https://commons.wikimedia.org/w/api.php?action=wbgetentities&format=json&origin=*&ids=M' + pid).then(function(j){
+      var e = firstEnt(j), st = e && (e.statements || e.claims), d = st && st.P180;
+      var q = d && d[0] && d[0].mainsnak && d[0].mainsnak.datavalue && d[0].mainsnak.datavalue.value && d[0].mainsnak.datavalue.value.id;
+      if (!q) return null;
+      return api(WD + '&ids=' + q).then(function(r){ var n = wdJa(firstEnt(r)); return n ? shortName(n) : null; });
+    }).catch(function(){ return null; });
+  }
+  return Promise.race([work, new Promise(function(r){ setTimeout(function(){ r(null); }, 6000); })]);
 }
 
 /* --- source: いらすとや --- */
@@ -877,11 +901,11 @@ function searchPieces(topic, cb){
   }
   if (SEEN.topic !== key) SEEN = {topic:key, titles:{}};
   var used = SEEN.titles, st = {}, done = false;
-  IRA_STAT = {direct:0, proxy:0};
+  IRA_STAT = {direct:0, proxy:0}; WNAME = {tried:0, hit:0};
   srcs.forEach(function(k){ st[k] = {n:0, busy:0, list:null, out:false, found:0}; });
   function diag(){
     var d = $('loadDiag'); if (!d) return;
-    d.textContent = srcs.map(function(k){ var t = st[k]; return SRC_NAME[k] + ' ' + t.n + (t.list ? '' : '…'); }).join(' ・ ') + (IRA_STAT.proxy ? '（いらすとやは中継 ' + IRA_STAT.proxy + '）' : '');
+    d.textContent = srcs.map(function(k){ var t = st[k]; return SRC_NAME[k] + ' ' + t.n + (t.list ? '' : '…'); }).join(' ・ ') + (IRA_STAT.proxy ? '（いらすとやは中継 ' + IRA_STAT.proxy + '）' : '') + (WNAME.tried ? '（ウィキの名前 ' + WNAME.hit + '/' + WNAME.tried + '）' : '');
   }
   function live(){ return srcs.filter(function(k){ return !st[k].out; }); }
   function finish(){ if (done || my !== job) return; done = true; diag(); cb.done(); }
@@ -2267,7 +2291,7 @@ function cpuStep(dt){
   if (c.hold > 0.35) { CPU = null; CPU_DROP = true; doDrop(); CPU_DROP = false; }
 }
 
-window.__tb = {alt:function(h){ topY = GROUND_Y - h; camTop = camTarget = Math.min(baseCam(), topY - 300); altCheck(); }, over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
+window.__tb = {wname:function(f, p){ return wikiName(f, p); }, alt:function(h){ topY = GROUND_Y - h; camTop = camTarget = Math.min(baseCam(), topY - 300); altCheck(); }, over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
   state:function(){ return {state:state, count:count, turnP:turnP, placed:placed.length, loser:loser, mode:MODE, net:NET ? {role:NET.role, open:NET.open, room:NET.room, wins:MATCH ? MATCH.wins : null} : null, match:MATCH}; },
   setX:function(x){ curX = x; aimSend(true); }, setPoolBlobs:function(n){ POOL = []; for (var i = 0; i < n; i++) POOL.push(makeBlob(i)); POOL = POOL.filter(Boolean); }};
 requestAnimationFrame(step);
