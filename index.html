@@ -433,6 +433,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.5', d:'2026-11-28', items:['🎲 ウィキメディアで同じお題をさがしたとき、毎回同じ画像ばかりにならないようにしました（関係のありそうな画像の中から、毎回ちがう組み合わせで選びます）']},
   {v:'0.14.4', d:'2026-11-28', items:['🎯 ウィキメディアで、お題に関係のある画像が出やすくなりました。お題のテーマの分類（たとえば「お酒」なら酒類の分類）に入っている画像を先にさがします']},
   {v:'0.14.3', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、分類をもう一段たどってさがすようにしました（「ワインボトル」→「ワイン」のように）。お題の言葉になる画像がさらに減ります']},
   {v:'0.14.2', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前さがしに「画像の分類（カテゴリ）」も使うようにしました。お題の言葉になってしまう画像が、ぐっと減ります']},
@@ -777,7 +778,7 @@ function candWiki(topic, used){
     var N = qs.length;
     return Promise.all(qs.map(commons)).then(function(rs){
       var seen = {}, list = [];
-      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(N - qi) * 100 - k, o:o}); }); });
+      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(N - qi) * 100 - k + Math.random() * 45, o:o}); });   // a pinch of chance, so the same topic brings different pictures each time });
       return rankList(list, used);
     });
   });
