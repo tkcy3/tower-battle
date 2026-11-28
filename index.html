@@ -433,6 +433,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.4', d:'2026-11-28', items:['🎯 ウィキメディアで、お題に関係のある画像が出やすくなりました。お題のテーマの分類（たとえば「お酒」なら酒類の分類）に入っている画像を先にさがします']},
   {v:'0.14.3', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、分類をもう一段たどってさがすようにしました（「ワインボトル」→「ワイン」のように）。お題の言葉になる画像がさらに減ります']},
   {v:'0.14.2', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前さがしに「画像の分類（カテゴリ）」も使うようにしました。お題の言葉になってしまう画像が、ぐっと減ります']},
   {v:'0.14.1', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、見つけやすくしました。日本語の記事で使われていない画像も、ほかの国のウィキペディアの記事・「何が写っているか」の情報・画像の分類から、日本語の名前をさがします']},
@@ -760,12 +761,23 @@ function rankList(list, used){
 }
 
 /* --- source: ウィキメディア・コモンズ --- */
+// the topic's own Commons category (from Wikidata: 日本語の記事 → the same subject on Commons), if it has one
+function topicCat(q){
+  return api('https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&normalize=1&props=sitelinks&sitefilter=commonswiki&sites=jawiki&titles=' + encodeURIComponent(q))
+    .then(function(j){ var e = firstEnt(j), t = e && e.sitelinks && e.sitelinks.commonswiki && e.sitelinks.commonswiki.title; return t && /^Category:/.test(t) ? t.replace(/^Category:/, '') : null; })
+    .catch(function(){ return null; });
+}
 function candWiki(topic, used){
-  return toEnglish(topicQuery(topic)).then(function(en){
-    var qs = [en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated'];
+  var tq = topicQuery(topic);
+  return Promise.all([toEnglish(tq), topicCat(tq)]).then(function(r0){
+    var en = r0[0], cat = r0[1], qs = [];
+    // pictures filed under the topic's category (and its sub-categories) come first: they are about the topic for sure
+    if (cat) qs.push('deepcat:"' + cat + '" filemime:png', 'incategory:"' + cat + '" filemime:png', 'deepcat:"' + cat + '" white background');
+    qs.push(en + ' filemime:png transparent', en + ' filemime:png isolated', en + ' filemime:png', en + ' white background', en + ' isolated');
+    var N = qs.length;
     return Promise.all(qs.map(commons)).then(function(rs){
       var seen = {}, list = [];
-      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(5 - qi) * 100 - k, o:o}); }); });
+      rs.forEach(function(r, qi){ r.forEach(function(o, k){ if (seen[o.title]) return; seen[o.title] = 1; list.push({id:o.title, sc:(N - qi) * 100 - k, o:o}); }); });
       return rankList(list, used);
     });
   });
@@ -2337,7 +2349,7 @@ function cpuStep(dt){
   if (c.hold > 0.35) { CPU = null; CPU_DROP = true; doDrop(); CPU_DROP = false; }
 }
 
-window.__tb = {wname:function(f, p){ return wikiName(f, p); }, alt:function(h){ topY = GROUND_Y - h; camTop = camTarget = Math.min(baseCam(), topY - 300); altCheck(); }, over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
+window.__tb = {wname:function(f, p){ return wikiName(f, p); }, cw:function(t){ return candWiki(t, {}).then(function(l){ return l.map(function(x){ return x.id; }); }); }, alt:function(h){ topY = GROUND_Y - h; camTop = camTarget = Math.min(baseCam(), topY - 300); altCheck(); }, over:function(w){ gameOver(w); }, setMatch:function(m){ MATCH = m; }, jit:function(){ return placed.map(function(b){ return [b.position.x, b.position.y, b.angle]; }); }, setCfg:function(o){ for (var k in o) CFG[k] = o[k]; }, topX:function(){ var t=null; placed.forEach(function(b){ if(!t||b.bounds.min.y<t.bounds.min.y) t=b; }); return t?(t.bounds.min.x+t.bounds.max.x)/2:0; },info:function(){ var b=placed[placed.length-1]; return b?{x:b.position.x,y:b.position.y}:null; },makePiece:makePiece, makeBlob:makeBlob, setPool:function(p){ POOL = p; }, start:function(){ fillBlobs(); if (MODE === 'cpu' && !MATCH) MATCH = {len:99, first:0, game:0, wins:[0, 0]}; newRound(0); }, match:function(){ return MATCH; }, drop:doDrop, rotate:rotate,
   state:function(){ return {state:state, count:count, turnP:turnP, placed:placed.length, loser:loser, mode:MODE, net:NET ? {role:NET.role, open:NET.open, room:NET.room, wins:MATCH ? MATCH.wins : null} : null, match:MATCH}; },
   setX:function(x){ curX = x; aimSend(true); }, setPoolBlobs:function(n){ POOL = []; for (var i = 0; i < n; i++) POOL.push(makeBlob(i)); POOL = POOL.filter(Boolean); }};
 requestAnimationFrame(step);
