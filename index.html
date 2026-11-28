@@ -70,6 +70,10 @@ input.tx:focus{border-color:var(--p1)}
 #hud{position:fixed;left:0;right:0;top:0;display:flex;flex-direction:column;align-items:center;gap:4px;padding:calc(env(safe-area-inset-top) + 10px) 10px 0;pointer-events:none;z-index:5}
 #turn{font-size:19px;font-weight:900;padding:7px 18px;border-radius:999px;background:var(--panel);border:3px solid var(--ink);min-width:120px;text-align:center}
 #tally{font-size:14px;display:flex;gap:8px;text-shadow:0 0 3px #fff,0 0 3px #fff}
+#pName{font-size:14px;font-weight:800;color:var(--ink);background:rgba(255,253,247,.82);padding:3px 12px;border-radius:999px;max-width:86vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#pName:empty{display:none}
+#pName small{font-size:11px;font-weight:700;color:var(--muted);margin-left:6px}
+body.cel #pName,body.result #pName{visibility:hidden}
 #quit{position:fixed;top:calc(env(safe-area-inset-top) + 10px);left:10px;width:46px;height:46px;font-size:20px;padding:0;z-index:6}
 #roomTag{position:fixed;top:calc(env(safe-area-inset-top) + 14px);right:10px;font-size:13px;padding:5px 10px;border-radius:999px;background:var(--panel);border:2px solid var(--line);z-index:6;display:flex;align-items:center;gap:5px}
 #roomTag i{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block}
@@ -191,7 +195,7 @@ body.tutDrop #drop{animation:dpulse 1s ease infinite}
 <canvas id="fx"></canvas>
 <div id="celTap" class="hidden"></div>
 
-<div id="hud"><div id="turn">あかの番</div><div id="tally"></div></div>
+<div id="hud"><div id="turn">あかの番</div><div id="tally"></div><div id="pName"></div></div>
 <button id="quit" aria-label="やめる">✕</button>
 <button id="gSet" aria-label="設定">⚙</button>
 <div id="roomTag"><i></i><span id="roomTagNo">部屋</span></div>
@@ -429,6 +433,8 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.0', d:'2026-11-28', items:['🏷️ 落とすパーツの名前を、上に小さく出すようにしました（どこの画像かもいっしょに出ます）。ウィキメディアの画像は、その画像が使われているウィキペディアの記事の名前を出します','💬 リアクションのふきだしを、LINEと同じく 自分は右・あいては左 にしました','🙂 なかまたちに名前をつけました（まるちゃん・ほしちゃん など）']},
+  {v:'0.13.5', d:'2026-11-28', items:['☁️ 「くものうえ」の雲を作りなおしました。大きさのちがう雲がもくもく重なって、ゆっくり流れる雲の海になりました']},
   {v:'0.13.4', d:'2026-11-28', items:['🔟 パーツはいつも最大10こにそろえました。なかまたちだけのときは、13しゅるいの中からランダムに10こ出てきます（「さがしなおす」で入れかわります）']},
   {v:'0.13.3', d:'2026-11-28', items:['✏️ なかまたちのふちの線と顔の大きさを、どのなかまも同じにそろえました']},
   {v:'0.13.2', d:'2026-11-28', items:['🔀 パーツのもとの並びを「なかまたち・いらすとや・えもじ・ウィキメディア」にしました']},
@@ -762,13 +768,40 @@ function candWiki(topic, used){
   });
 }
 function loadWiki(c){
-  var o = c.o;
+  var o = c.o, topic = TOPIC;
   return loadImg(o.ii.thumburl, true).then(function(im){
     var pc = makePiece(im, {}); if (!pc) return null;
     var md = o.ii.extmetadata || {};
     pc.credit = {title:o.title.replace(/^File:/, ''), artist:strip(md.Artist && md.Artist.value), lic:(md.LicenseShortName && md.LicenseShortName.value) || '', url:o.ii.descriptionurl};
-    return pc;
+    // the file name itself is often gibberish, so name it after the Wikipedia article that uses it
+    return wikiName(o.title).then(function(n){
+      if (n) { pc.name = n; pc.from = 'ウィキペディアの記事より'; } else { pc.name = shortName(topic); pc.from = 'ウィキメディア（お題）'; }
+      pc.credit.used = n || ''; return pc;
+    });
   });
+}
+function shortName(t){ t = String(t || '').replace(/_/g, ' ').replace(/\s*[（(][^）)]*[）)]\s*/g, '').trim(); return t.length > 16 ? t.slice(0, 15) + '…' : t; }
+function iraName(t){
+  t = String(t || '').replace(/【[^】]*】/g, '').replace(/[（(][^）)]*[）)]/g, '');
+  t = t.replace(/のイラスト.*$/, '').replace(/イラスト.*$/, '').replace(/のマーク.*$/, '').replace(/の$/, '').trim();
+  return shortName(t);
+}
+// the Wikipedia article (Japanese first) that shows this picture. Gives up quietly after a few seconds
+function wikiName(file){
+  var u = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&prop=globalusage&gunamespace=0&gusite=jawiki|enwiki&gulimit=60&titles=' + encodeURIComponent(file);
+  var job0 = api(u).then(function(j){
+    var pg = j.query && j.query.pages && j.query.pages[0], gu = (pg && pg.globalusage) || [];
+    var by = function(w){ return gu.filter(function(g){ return g.wiki === w && !/^(List of|一覧|\d)/.test(g.title); }).map(function(g){ return g.title.replace(/_/g, ' '); }).sort(function(a, b){ return a.length - b.length; }); };
+    var ja = by('ja.wikipedia.org'); if (ja.length) return shortName(ja[0]);
+    var en = by('en.wikipedia.org').slice(0, 8); if (!en.length) return null;
+    return api('https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*&redirects=1&prop=langlinks&lllang=ja&titles=' + encodeURIComponent(en.join('|')))
+      .then(function(j2){
+        var ps = (j2.query && j2.query.pages) || [], best = null;
+        ps.forEach(function(p){ var l = p.langlinks && p.langlinks[0] && p.langlinks[0].title; if (l && (!best || l.length < best.length)) best = l; });
+        return best ? shortName(best) : null;
+      });
+  }).catch(function(){ return null; });
+  return Promise.race([job0, new Promise(function(r){ setTimeout(function(){ r(null); }, 3500); })]);
 }
 
 /* --- source: いらすとや --- */
@@ -796,6 +829,7 @@ function loadIraC(c){
     IRA_STAT[r.via]++;
     var pc = makePiece(r.im, {minFill:0.1}); if (!pc) return null;
     pc.credit = {title:o.title, artist:'いらすとや', lic:'いらすとや ご利用規約', url:o.link || 'https://www.irasutoya.com/'}; pc.url = r.url;
+    pc.name = iraName(o.title); pc.from = 'いらすとや';
     return pc;
   });
 }
@@ -822,6 +856,7 @@ function loadEmo(c){
   return loadImg(url, true).then(function(im){
     var pc = makePiece(im, {}); if (!pc) return null;
     pc.credit = {title:c.o.label, artist:'Microsoft Fluent Emoji', lic:'MIT License', url:'https://github.com/microsoft/fluentui-emoji'}; pc.url = url;
+    pc.name = shortName(c.o.label); pc.from = 'えもじ';
     return pc;
   });
 }
@@ -1022,7 +1057,7 @@ function newRound(starter){
     world.on('begin-contact', onContact);
     world.createBody({type:'static', position:PL.Vec2(0, (GROUND_Y + 20) / PS)}).createFixture(PL.Box(STAGE_W / 2 / PS, 20 / PS), {friction:CFG.gfric});
   } else world = null;
-  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; topY = GROUND_Y; hintOn = true; LOG = {t0:Date.now(), rot:0, hmax:0}; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
+  CPU = null; CEL = null; LINGER = 0; PARTS = []; $('celTap').classList.add('hidden'); document.body.classList.remove('cel'); placed = []; byId = {}; count = 0; turnP = MODE === 'solo' ? 0 : (starter || 0); loser = -1; bag = []; $('pName').innerHTML = ''; topY = GROUND_Y; hintOn = true; LOG = {t0:Date.now(), rot:0, hmax:0}; altLv = 0; altT = []; $('altB').classList.remove('on'); cur = null;
   setNetClass(); clearBubbles();
   show(null); camTop = camTarget = baseCam();
   if (isHost()) {
@@ -1047,6 +1082,7 @@ function newTurn(){
 function beginAim(pi, sc){
   camTarget = Math.min(baseCam(), topY - 300);
   cur = makeBody(pi, sc); curX = 0; curAng = angNow = 0; setAng(cur, 0); placeCur();
+  var pc0 = POOL[pi]; $('pName').innerHTML = pc0 && pc0.name ? esc(pc0.name) + '<small>' + esc(pc0.from || '') + '</small>' : '';
   state = 'aim'; updHud();
   LOG.hmax = Math.max(LOG.hmax, GROUND_Y - topY);
   altCheck(); if (TUT) tutTick();
@@ -1139,7 +1175,7 @@ function tutPiece(kind, col){
   var probe = tutDraw0(kind, col, 0, 0); if (!probe) return null;
   var s = Math.sqrt(2300 / probe.area);
   var pc = tutDraw0(kind, col, FR_LINE / s, FR_FACE / s); if (!pc) return null;
-  pc.src = 'fr'; pc.fixSc = s; return pc;
+  pc.src = 'fr'; pc.fixSc = s; pc.name = FRIEND_NAME[kind] || ''; pc.from = 'なかまたち'; return pc;
 }
 function tutDraw0(kind, col, lw, fs){
   var c = document.createElement('canvas'); c.width = c.height = 220; var x = c.getContext('2d'), i, a;
@@ -1168,6 +1204,7 @@ function tutDraw0(kind, col, lw, fs){
   return makePiece(c, {force:true});
 }
 // 「なかまたち」: the practice friends, as a topic everyone can pick (no image search needed)
+var FRIEND_NAME = {wide:'ながしかくん', box:'しかくん', tall:'のっぽくん', tri:'さんかくちゃん', hex:'ろっかくん', penta:'ごかくちゃん', ball:'まるちゃん', egg:'たまごちゃん', dia:'ひしがたくん', arch:'はんぶんこちゃん', bean:'まめちゃん', ell:'エルくん', star:'ほしちゃん'};
 var FRIEND_SET = [['wide', '#ffb36b'], ['box', '#7cc96b'], ['hex', '#6ea8ff'], ['tri', '#ff8f9a'], ['ball', '#ffd34d'], ['tall', '#b79cf0'], ['penta', '#6ec7a8'], ['egg', '#ffc4a8'], ['dia', '#8fd0ef'], ['arch', '#f2a65a'], ['bean', '#a8d86e'], ['ell', '#f7a1c4'], ['star', '#ffe27a']];
 function friendPieces(){ return FRIEND_SET.map(function(k){ return tutPiece(k[0], k[1]); }).filter(Boolean); }
 function startTut(){
@@ -1333,7 +1370,7 @@ function bubble(p, k){
   var sm = document.createElement('small'); sm.textContent = pname(p); e.appendChild(sm);
   e.style.borderColor = p ? 'var(--p1)' : 'var(--p0)'; e.style.color = p ? 'var(--p1d)' : 'var(--p0d)';
   var top = (document.body.classList.contains('cel') ? 74 : document.body.classList.contains('result') ? 56 : 22) + (bubN++ % 4) * 4;
-  e.style.top = top + '%'; if (mine) e.style.left = (8 + Math.random() * 10) + '%'; else e.style.right = (8 + Math.random() * 10) + '%';
+  e.style.top = top + '%'; if (mine) e.style.right = (8 + Math.random() * 10) + '%'; else e.style.left = (8 + Math.random() * 10) + '%';   // like LINE: me on the right
   $('rxLayer').appendChild(e); setTimeout(function(){ e.remove(); }, 3300);
 }
 function clearBubbles(){ $('rxLayer').innerHTML = ''; }
@@ -1403,7 +1440,7 @@ $('lobGo').onclick = function(){
   startNetMatch();
 };
 $('lobBack').onclick = function(){ job++; leave(); };
-function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null, fixSc:pc.fixSc || null, src:pc.src || null}; }
+function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null, fixSc:pc.fixSc || null, src:pc.src || null, name:pc.name || '', from:pc.from || ''}; }
 function sendPieces(){
   NET.ready = false;
   send({t:'pstart', n:POOL.length, topic:TOPIC});
@@ -1441,7 +1478,7 @@ function buildPieces(list){
   return Promise.all(list.map(function(d){
     return loadImg(d.url || d.u, false).then(function(im){
       var c = document.createElement('canvas'); c.width = d.w; c.height = d.h; c.getContext('2d').drawImage(im, 0, 0, d.w, d.h);
-      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit, url:d.url || null, fixSc:d.fixSc || null, src:d.src || null};
+      return {cv:c, w:d.w, h:d.h, verts:d.verts, simple:d.simple, area:d.area, credit:d.credit, url:d.url || null, fixSc:d.fixSc || null, src:d.src || null, name:d.name || '', from:d.from || ''};
     });
   }));
 }
@@ -1658,6 +1695,35 @@ function cuteFace(x, y, s, a){
   ctx.fillStyle = 'rgba(255,127,138,' + (0.5 * a) + ')';
   ctx.beginPath(); ctx.ellipse(x - 12 * s, y + 3 * s, 3 * s, 2 * s, 0, 0, 7); ctx.ellipse(x + 12 * s, y + 3 * s, 3 * s, 2 * s, 0, 0, 7); ctx.fill();
 }
+// the cloud sea: puffs of many sizes along the top, soft shade under each puff, fading out below
+function hash1(i){ var v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
+function seaLayer(y, f, t, vw, o){
+  var span = vw + 240, n = o.n, L = -vw / 2 - 120, i, px = [], k;
+  for (i = 0; i < n; i++) {
+    var base = i * span / n + hash1(i + o.seed) * span / n * 0.6;
+    var x = ((((base - t * o.sp) % span) + span) % span) + L;
+    var r = o.r0 + hash1(i * 3.1 + o.seed) * o.r1, big = hash1(i * 7.7 + o.seed) > 0.82 ? 1.45 : 1;
+    px.push([x, y - r * 0.35 * big - hash1(i * 5.3 + o.seed) * 8, r * big]);
+  }
+  // body: a solid top that fades into the sky underneath
+  var g = ctx.createLinearGradient(0, y - 10, 0, y + o.h);
+  g.addColorStop(0, 'rgba(' + o.col + ',' + f + ')'); g.addColorStop(0.55, 'rgba(' + o.col + ',' + (0.8 * f) + ')'); g.addColorStop(1, 'rgba(' + o.col + ',0)');
+  ctx.fillStyle = g; ctx.fillRect(-vw, y - 4, vw * 2, o.h + 4);
+  // soft shade under the puffs, then the puffs, then a little sunny highlight on top
+  ctx.fillStyle = 'rgba(' + o.shade + ',' + (0.9 * f) + ')';
+  ctx.beginPath(); for (k = 0; k < px.length; k++) { ctx.moveTo(px[k][0] + px[k][2], px[k][1] + 7); ctx.arc(px[k][0], px[k][1] + 7, px[k][2], 0, 7); } ctx.fill();
+  ctx.fillStyle = 'rgba(' + o.col + ',' + f + ')';
+  ctx.beginPath(); for (k = 0; k < px.length; k++) { ctx.moveTo(px[k][0] + px[k][2], px[k][1]); ctx.arc(px[k][0], px[k][1], px[k][2], 0, 7); } ctx.fill();
+  ctx.fillRect(-vw, y + 6, vw * 2, 10);
+  if (o.hi) {
+    ctx.fillStyle = 'rgba(255,255,255,' + (0.9 * f) + ')';
+    ctx.beginPath(); for (k = 0; k < px.length; k++) { var rr = px[k][2] * 0.45; ctx.moveTo(px[k][0] - px[k][2] * 0.25 + rr, px[k][1] - px[k][2] * 0.35); ctx.ellipse(px[k][0] - px[k][2] * 0.25, px[k][1] - px[k][2] * 0.35, rr, rr * 0.6, -0.3, 0, 7); } ctx.fill();
+  }
+}
+function cloudSea(y, f, t, vw){
+  seaLayer(y - 26, f * 0.9, t, vw, {n:11, seed:40, sp:2.2, r0:14, r1:16, h:40, col:'236,246,253', shade:'214,232,246', hi:false});
+  seaLayer(y, f, t, vw, {n:15, seed:3, sp:4.5, r0:18, r1:22, h:120, col:'250,253,255', shade:'220,234,247', hi:true});
+}
 function drawSky(t, top, bot, vw){
   var near = function(y, r){ return y + r > top && y - r < bot; }, L = -vw / 2, R = vw / 2;
   var topAlt = GROUND_Y - top, night = Math.max(0, Math.min(1, (topAlt - 1380) / 320));
@@ -1703,13 +1769,8 @@ function drawSky(t, top, bot, vw){
     ['#ff8f70', '#ffd34d', '#6ea8ff', '#ffd34d', '#ff8f70'].forEach(function(cl, j){ ctx.fillStyle = cl; ctx.fillRect(x - 27 + j * 10.8, y - 32, 11, 64); });
     ctx.restore(); ctx.restore(); cuteFace(x, y + 2, 0.9, f);
   }
-  // 3 the cloud sea: a thick bank of fluffy clouds you climb through
-  if ((f = altFade(3)) && near(y = altY(3) + 70, 90)) {
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.85 * f) + ')';
-    for (var q = 0; q < 10; q++) { x = drift(q * (vw + 160) / 10, 4, t, vw); cloudShape(x, y + (q % 2) * 16, 1.3); }
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.7 * f) + ')'; for (var q2 = 0; q2 < 3; q2++) cloudShape(drift(q2 * 170 + 60, 7, t, vw), y - 70 - q2 * 22, 0.7);
-    ctx.fillStyle = 'rgba(255,255,255,' + (0.6 * f) + ')'; ctx.fillRect(-vw, y + 10, vw * 2, 26);
-  }
+  // 3 the cloud sea: a thick, billowy bank you climb through (two layers that drift at different speeds)
+  if ((f = altFade(3)) && near(y = altY(3) + 60, 150)) cloudSea(y, f, t, vw);
   // 4 airplane crossing the sky
   if ((f = altFade(4)) && near(y = altY(4), 50)) {
     x = ((t * 55) % (vw + 300)) - vw / 2 - 150;
