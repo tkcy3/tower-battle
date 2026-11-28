@@ -433,6 +433,7 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
+  {v:'0.14.7', d:'2026-11-28', items:['📶 ネット対戦の通信量を減らしました。パーツが止まっている間は、ほとんど通信しません。ウィキメディアなどの絵も軽い形式で送ります']},
   {v:'0.14.6', d:'2026-11-28', items:['🔧 v0.14.5 でホーム画面がうまく表示されなかったのを直しました']},
   {v:'0.14.5', d:'2026-11-28', items:['🎲 ウィキメディアで同じお題をさがしたとき、毎回同じ画像ばかりにならないようにしました（関係のありそうな画像の中から、毎回ちがう組み合わせで選びます）']},
   {v:'0.14.4', d:'2026-11-28', items:['🎯 ウィキメディアで、お題に関係のある画像が出やすくなりました。お題のテーマの分類（たとえば「お酒」なら酒類の分類）に入っている画像を先にさがします']},
@@ -1524,7 +1525,9 @@ $('lobGo').onclick = function(){
   startNetMatch();
 };
 $('lobBack').onclick = function(){ job++; leave(); };
-function pieceData(pc){ return {u:pc.url ? null : pc.cv.toDataURL('image/png'), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null, fixSc:pc.fixSc || null, src:pc.src || null, name:pc.name || '', from:pc.from || ''}; }
+// pictures that are sent as data go as WebP (keeps the see-through parts, much lighter); browsers that can't make WebP send PNG
+function picData(cv){ var w = ''; try { w = cv.toDataURL('image/webp', 0.9); } catch(e) {} return /^data:image\/webp/.test(w) ? w : cv.toDataURL('image/png'); }
+function pieceData(pc){ return {u:pc.url ? null : picData(pc.cv), url:pc.url || null, w:pc.w, h:pc.h, verts:pc.verts, simple:pc.simple, area:pc.area, credit:pc.credit || null, fixSc:pc.fixSc || null, src:pc.src || null, name:pc.name || '', from:pc.from || ''}; }
 function sendPieces(){
   NET.ready = false;
   send({t:'pstart', n:POOL.length, topic:TOPIC});
@@ -1684,12 +1687,16 @@ function applySnap(m){
   if (m.p && cur && !myTurn()) { curX = m.p[0]; curAng = m.p[1]; }
   if (typeof m.n === 'number') count = m.n;
 }
-var snapF = 0;
+var snapF = 0, snapLast = '', snapT = 0;
+// about 20 times a second while something moves; when everything is still, only a heartbeat once every 2 seconds
 function sendSnap(){
   if (!NET || NET.role !== 'host' || !NET.open || !world) return;
   if (++snapF % 3) return;
   var r2 = function(v){ return Math.round(v * 100) / 100; };
-  send({t:'s', full:1, n:count, b:placed.map(function(b){ return [b.plugin.id, r2(b.position.x), r2(b.position.y), Math.round(b.angle * 1000) / 1000]; }), p:(state === 'aim' && cur) ? [r2(curX), Math.round(curAng * 1000) / 1000] : null});
+  var m = {t:'s', full:1, n:count, b:placed.map(function(b){ return [b.plugin.id, r2(b.position.x), r2(b.position.y), Math.round(b.angle * 1000) / 1000]; }), p:(state === 'aim' && cur) ? [r2(curX), Math.round(curAng * 1000) / 1000] : null};
+  var key = JSON.stringify(m), now = Date.now();
+  if (key === snapLast && now - snapT < 2000) return;
+  snapLast = key; snapT = now; send(m);
 }
 
 /* ---------- loop ---------- */
