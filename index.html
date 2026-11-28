@@ -433,7 +433,8 @@ var TKCS = (function(){
 (function(){
 'use strict';
 var CHANGELOG = [
-  {v:'0.14.1', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、見つけやすくしました。日本語の記事で使われていない画像も、ほかの国のウィキペディアの記事や「何が写っているか」の情報から、日本語の名前をさがします']},
+  {v:'0.14.2', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前さがしに「画像の分類（カテゴリ）」も使うようにしました。お題の言葉になってしまう画像が、ぐっと減ります']},
+  {v:'0.14.1', d:'2026-11-28', items:['🏷️ ウィキメディアの画像の名前を、見つけやすくしました。日本語の記事で使われていない画像も、ほかの国のウィキペディアの記事・「何が写っているか」の情報・画像の分類から、日本語の名前をさがします']},
   {v:'0.14.0', d:'2026-11-28', items:['🏷️ 落とすパーツの名前を、上に小さく出すようにしました（どこの画像かもいっしょに出ます）。ウィキメディアの画像は、その画像が使われているウィキペディアの記事の名前を出します','💬 リアクションのふきだしを、LINEと同じく 自分は右・あいては左 にしました','🙂 なかまたちに名前をつけました（まるちゃん・ほしちゃん など）']},
   {v:'0.13.5', d:'2026-11-28', items:['☁️ 「くものうえ」の雲を作りなおしました。大きさのちがう雲がもくもく重なって、ゆっくり流れる雲の海になりました']},
   {v:'0.13.4', d:'2026-11-28', items:['🔟 パーツはいつも最大10こにそろえました。なかまたちだけのときは、13しゅるいの中からランダムに10こ出てきます（「さがしなおす」で入れかわります）']},
@@ -792,6 +793,7 @@ function iraName(t){
 //  1. a Japanese Wikipedia article that shows the picture
 //  2. an article in another Wikipedia that shows it → that subject's Japanese name (Wikidata)
 //  3. what the picture "depicts" (structured data on Commons) → its Japanese name (Wikidata)
+//  4. the picture's Commons categories → the subject they stand for → its Japanese name (Wikidata)
 var WNAME = {tried:0, hit:0};
 var WD = 'https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&props=labels|sitelinks&languages=ja&sitefilter=jawiki';
 function wdJa(ent){
@@ -802,8 +804,10 @@ function wdJa(ent){
 function firstEnt(j){ var e = j && j.entities, k; if (!e) return null; for (k in e) if (!/^-/.test(k)) return e[k]; return null; }
 function wikiName(file, pid){
   var C = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&formatversion=2&origin=*';
-  var work = api(C + '&prop=globalusage&gunamespace=0&gulimit=200&titles=' + encodeURIComponent(file)).then(function(j){
+  var cats = [];
+  var work = api(C + '&prop=globalusage|categories&gunamespace=0&gulimit=200&clshow=!hidden&cllimit=30&titles=' + encodeURIComponent(file)).then(function(j){
     var pg = j.query && j.query.pages && j.query.pages[0], gu = (pg && pg.globalusage) || [];
+    cats = ((pg && pg.categories) || []).map(function(c){ return c.title; }).filter(function(t){ return !/(files|images|photographs|PNG|SVG|JPEG|transparent|background|uploaded|license|Media |Quality|Featured|Valued|by |taken with|in the public domain)/i.test(t); }).slice(0, 25);
     if (!pid && pg && pg.pageid) pid = pg.pageid;
     var wp = gu.filter(function(g){ return /\.wikipedia\.org$/.test(g.wiki) && !/^(List of|Liste|一覧|\d)/.test(g.title); });
     var ja = wp.filter(function(g){ return g.wiki === 'ja.wikipedia.org'; }).map(function(g){ return g.title.replace(/_/g, ' '); }).sort(function(a, b){ return a.length - b.length; });
@@ -817,12 +821,25 @@ function wikiName(file, pid){
     return Promise.all(tries).then(function(ns){ for (var i = 0; i < ns.length; i++) if (ns[i]) return shortName(ns[i]); return depicts(); });
   }).catch(function(){ return depicts(); });
   function depicts(){
-    if (!pid) return null;
+    if (!pid) return fromCats();
     return api('https://commons.wikimedia.org/w/api.php?action=wbgetentities&format=json&origin=*&ids=M' + pid).then(function(j){
       var e = firstEnt(j), st = e && (e.statements || e.claims), d = st && st.P180;
       var q = d && d[0] && d[0].mainsnak && d[0].mainsnak.datavalue && d[0].mainsnak.datavalue.value && d[0].mainsnak.datavalue.value.id;
-      if (!q) return null;
-      return api(WD + '&ids=' + q).then(function(r){ var n = wdJa(firstEnt(r)); return n ? shortName(n) : null; });
+      if (!q) return fromCats();
+      return api(WD + '&ids=' + q).then(function(r){ var n = wdJa(firstEnt(r)); return n ? shortName(n) : fromCats(); });
+    }).catch(function(){ return fromCats(); });
+  }
+  function fromCats(){
+    if (!cats.length) return null;
+    return api(WD + '&sites=commonswiki&titles=' + encodeURIComponent(cats.join('|'))).then(function(j){
+      var e = j && j.entities, best = null, k, n;
+      for (k in e) {
+        n = wdJa(e[k]); if (!n) continue;
+        var isCat = /^(Category|カテゴリ)[:：]/.test(n); n = n.replace(/^(Category|カテゴリ)[:：]\s*/, '');
+        var sc = (isCat ? 100 : 0) + n.length;
+        if (!best || sc < best.sc) best = {n:n, sc:sc};
+      }
+      return best ? shortName(best.n) : null;
     }).catch(function(){ return null; });
   }
   return Promise.race([work, new Promise(function(r){ setTimeout(function(){ r(null); }, 6000); })]);
